@@ -1,0 +1,2 @@
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_data BYTEA;
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS thumbnail_mime_type VARCHAR(50);
