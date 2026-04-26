@@ -15,13 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 
 @Slf4j
 @RestController
@@ -51,42 +46,31 @@ public class KiwifyWebhookController {
     }
 
     /**
-     * Validates the Kiwify webhook signature.
-     * Kiwify sends an HMAC-SHA1 of the raw body in the "X-Kiwify-Signature" header,
-     * using the webhook secret as the key.
+     * Valida o token do webhook da Kiwify.
      *
-     * <p>SECURITY: if the secret is not configured the request is always rejected —
-     * failing open would allow unauthenticated subscription manipulation.</p>
+     * A Kiwify envia o segredo como query param ?token=... na URL.
+     * O HTTPS garante que a query string é encriptada em trânsito.
+     * A comparação usa MessageDigest.isEqual (constant-time) para evitar timing attacks.
+     *
+     * SECURITY: secret ausente → rejeita sempre (fail-closed).
      */
     private boolean isSignatureValid(String payload, HttpServletRequest request) {
         String secret = appProperties.getKiwify().getWebhookSecret();
         if (secret == null || secret.isBlank()) {
-            log.error("KIWIFY_WEBHOOK_SECRET not configured — all webhook requests will be rejected. "
-                    + "Set the environment variable to enable webhook processing.");
+            log.error("KIWIFY_WEBHOOK_SECRET não configurado — todas as requisições serão rejeitadas.");
             return false;
         }
 
-        // HMAC-SHA1 header (Kiwify standard)
-        String sigHeader = request.getHeader("X-Kiwify-Signature");
-        if (sigHeader == null || sigHeader.isBlank()) {
-            log.warn("Kiwify webhook received with no X-Kiwify-Signature header from IP={}",
-                    request.getRemoteAddr());
+        String receivedToken = request.getParameter("token");
+        if (receivedToken == null || receivedToken.isBlank()) {
+            log.warn("Kiwify webhook sem token na URL, IP={}", request.getRemoteAddr());
             return false;
         }
 
-        return verifyHmacSha1(payload, secret, sigHeader.trim());
-    }
-
-    private boolean verifyHmacSha1(String payload, String secret, String expectedHex) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA1");
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA1"));
-            byte[] computed = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            byte[] expected = HexFormat.of().parseHex(expectedHex);
-            return MessageDigest.isEqual(computed, expected);
-        } catch (NoSuchAlgorithmException | InvalidKeyException | IllegalArgumentException e) {
-            log.error("HMAC verification error: {}", e.getMessage());
-            return false;
-        }
+        // Comparação em tempo constante — evita timing attack
+        return MessageDigest.isEqual(
+                secret.getBytes(StandardCharsets.UTF_8),
+                receivedToken.getBytes(StandardCharsets.UTF_8)
+        );
     }
 }
