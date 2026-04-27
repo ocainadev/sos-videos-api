@@ -47,9 +47,9 @@ public class AdminService {
             throw new BusinessException("Já existe um usuário com este CPF.");
         }
 
-        String initialPassword = (request.getCpf() != null && !request.getCpf().isBlank())
-                ? request.getCpf().replaceAll("\\D", "")
-                : request.getEmail();
+        // Senha inicial = primeiros 6 dígitos do CPF; sem CPF usa o e-mail
+        String cpfDigits = (request.getCpf() != null) ? request.getCpf().replaceAll("\\D", "") : "";
+        String initialPassword = cpfDigits.length() >= 6 ? cpfDigits.substring(0, 6) : request.getEmail();
 
         UserRole role = UserRole.SUBSCRIBER;
         if ("SUPPORT".equalsIgnoreCase(request.getRole())) {
@@ -63,7 +63,7 @@ public class AdminService {
                 .passwordHash(passwordEncoder.encode(initialPassword))
                 .role(role)
                 .active(true)
-                .firstLoginPendingPasswordChange(true)
+                .firstLoginPendingPasswordChange(false)
                 .build();
 
         user = userRepository.save(user);
