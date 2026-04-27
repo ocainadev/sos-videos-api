@@ -1,6 +1,7 @@
 package com.sosvideos.admin.controller;
 
 import com.sosvideos.admin.dto.CreateSubscriberRequest;
+import com.sosvideos.admin.dto.CsvImportResult;
 import com.sosvideos.admin.dto.PageResponse;
 import com.sosvideos.admin.dto.SubscriberSummaryResponse;
 import com.sosvideos.admin.dto.SubscriptionAdjustRequest;
@@ -16,9 +17,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -65,6 +68,17 @@ public class AdminController {
             @Valid @RequestBody UserStatusRequest request) {
         adminService.toggleUserStatus(id, request);
         return ResponseEntity.ok(ApiResponse.ok("Status do usuário atualizado."));
+    }
+
+    @PostMapping(value = "/subscribers/import-csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Importa assinantes em lote via CSV exportado do Kiwify")
+    public ResponseEntity<ApiResponse<CsvImportResult>> importCsv(
+            @RequestParam("file") MultipartFile file) {
+        CsvImportResult result = adminService.importFromCsv(file);
+        String msg = String.format("Importação concluída: %d criados, %d atualizados, %d ignorados.",
+                result.created(), result.updated(), result.skipped());
+        return ResponseEntity.ok(ApiResponse.success(msg, result));
     }
 
     // ── Subscriptions ─────────────────────────────────────────────────────────

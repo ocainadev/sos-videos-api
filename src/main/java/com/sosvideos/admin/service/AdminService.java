@@ -1,6 +1,7 @@
 package com.sosvideos.admin.service;
 
 import com.sosvideos.admin.dto.CreateSubscriberRequest;
+import com.sosvideos.admin.dto.CsvImportResult;
 import com.sosvideos.admin.dto.PageResponse;
 import com.sosvideos.admin.dto.SubscriberSummaryResponse;
 import com.sosvideos.admin.dto.SubscriptionAdjustRequest;
@@ -16,13 +17,22 @@ import com.sosvideos.user.enums.UserRole;
 import com.sosvideos.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -153,6 +163,124 @@ public class AdminService {
         log.info("Subscription id={} manually adjusted: {} -> {} | endDate={} | reason={}",
                 subscriptionId, previous, request.getStatus(),
                 sub.getEndDate(), safeReason);
+    }
+
+    // ── CSV Import ────────────────────────────────────────────────────────────
+
+    @Transactional
+    public CsvImportResult importFromCsv(MultipartFile file) {
+        int created = 0, updated = 0, skipped = 0;
+        List<String> errors = new ArrayList<>();
+
+        try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)) {
+            Iterable<CSVRecord> records = CSVFormat.DEFAULT
+                    .builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .setTrim(true)
+                    .build()
+                    .parse(reader);
+
+            for (CSVRecord record : records) {
+                long line = record.getRecordNumber() + 1;
+                try {
+                    String email = record.get("Customer Email");
+                    if (email == null || email.isBlank()) { skipped++; continue; }
+
+                    String name      = record.get("Customer Name");
+                    String cpfRaw    = record.get("Customer CPF / CNPJ");
+                    String statusRaw = record.get("Status");
+                    String startedAt = record.get("Started At");
+                    String endedAt   = record.get("Ended At");
+                    String periodEnd = record.get("Current Period End");
+
+                    String cpf = cpfRaw != null ? cpfRaw.replaceAll("[^0-9]", "") : "";
+                    // CPF do Kiwify pode ser CNPJ (14 dígitos); guarda só se for CPF válido (11 dígitos)
+                    String cpfToSave = cpf.length() == 11 ? cpf : null;
+
+                    SubscriptionStatus status = mapCsvStatus(statusRaw);
+                    LocalDate startDate = parseCsvDate(startedAt);
+                    // Prefere Current Period End; cai para Ended At se vazio
+                    LocalDate endDate = parseCsvDate(!periodEnd.isBlank() ? periodEnd : endedAt);
+
+                    Optional<User> existing = userRepository.findByEmail(email);
+
+                    if (existing.isEmpty()) {
+                        String initialPassword = cpf.length() >= 6 ? cpf.substring(0, 6) : email;
+                        User user = User.builder()
+                                .name(name)
+                                .email(email)
+                                .cpf(cpfToSave)
+                                .passwordHash(passwordEncoder.encode(initialPassword))
+                                .role(UserRole.SUBSCRIBER)
+                                .active(true)
+                                .firstLoginPendingPasswordChange(true)
+                                .build();
+                        user = userRepository.save(user);
+
+                        subscriptionRepository.save(Subscription.builder()
+                                .user(user)
+                                .status(status)
+                                .startDate(startDate)
+                                .endDate(endDate)
+                                .build());
+                        created++;
+                        log.info("CSV import: user created email={}", email);
+                    } else {
+                        User user = existing.get();
+                        Optional<Subscription> existingSub = subscriptionRepository
+                                .findTopByUserIdOrderByCreatedAtDesc(user.getId());
+
+                        if (existingSub.isPresent()) {
+                            Subscription sub = existingSub.get();
+                            sub.setStatus(status);
+                            sub.setStartDate(startDate);
+                            sub.setEndDate(endDate);
+                            subscriptionRepository.save(sub);
+                        } else {
+                            subscriptionRepository.save(Subscription.builder()
+                                    .user(user)
+                                    .status(status)
+                                    .startDate(startDate)
+                                    .endDate(endDate)
+                                    .build());
+                        }
+                        updated++;
+                        log.info("CSV import: subscription updated email={}", email);
+                    }
+                } catch (Exception e) {
+                    errors.add("Linha " + line + ": " + e.getMessage());
+                    log.warn("CSV import error at line {}: {}", line, e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            throw new BusinessException("Erro ao processar o arquivo CSV: " + e.getMessage());
+        }
+
+        log.info("CSV import finished: created={} updated={} skipped={} errors={}", created, updated, skipped, errors.size());
+        return new CsvImportResult(created, updated, skipped, errors);
+    }
+
+    private SubscriptionStatus mapCsvStatus(String status) {
+        if (status == null) return SubscriptionStatus.PENDING;
+        return switch (status.toLowerCase().trim()) {
+            case "active"              -> SubscriptionStatus.ACTIVE;
+            case "canceled",
+                 "cancelled"          -> SubscriptionStatus.CANCELED;
+            case "refunded"           -> SubscriptionStatus.REFUNDED;
+            case "expired"            -> SubscriptionStatus.EXPIRED;
+            default                   -> SubscriptionStatus.PENDING;
+        };
+    }
+
+    private LocalDate parseCsvDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) return null;
+        try {
+            // Kiwify format: "2026-04-27 16:20" — take date portion only
+            return LocalDate.parse(dateStr.trim().substring(0, 10));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

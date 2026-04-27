@@ -114,6 +114,13 @@
             <version>${google-auth.version}</version>
         </dependency>
 
+        <!-- Apache Commons CSV — importação de assinantes via arquivo Kiwify -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.11.0</version>
+        </dependency>
+
         <!-- Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
