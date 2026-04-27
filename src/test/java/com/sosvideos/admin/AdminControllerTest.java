@@ -125,7 +125,7 @@ class AdminControllerTest extends AbstractIntegrationTest {
 
     @Test
     @Order(11)
-    @DisplayName("Admin cria assinante sem CPF — senha inicial é o email")
+    @DisplayName("Admin cria assinante sem CPF — senha inicial é 123456")
     void criarAssinanteSemCpf_retorna201() throws Exception {
         String email = "sem.cpf@sostest.com";
         Map<String, Object> req = Map.of("name", "Sem CPF", "email", email);
@@ -136,8 +136,8 @@ class AdminControllerTest extends AbstractIntegrationTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated());
 
-        // Confirma que consegue logar com o email como senha
-        loginAndGetToken(email, email);
+        // Confirma que consegue logar com a senha padrão 123456
+        loginAndGetToken(email, "123456");
     }
 
     @Test
