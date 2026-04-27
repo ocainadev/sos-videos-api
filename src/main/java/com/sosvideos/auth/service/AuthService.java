@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -87,8 +88,11 @@ public class AuthService {
         User user = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new BusinessException("Usuário não encontrado."));
 
+        // Busca assinatura ACTIVE ou CANCELED para mostrar "acesso até" mesmo cancelado
         Optional<Subscription> sub = subscriptionRepository
-                .findActiveByUserId(user.getId(), SubscriptionStatus.ACTIVE, LocalDate.now());
+                .findAccessibleByUserId(user.getId(),
+                        List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.CANCELED),
+                        LocalDate.now());
 
         boolean hasAcceptedTerm = termAcceptanceRepository
                 .findActiveTermAcceptanceByUserId(user.getId()).isPresent();
@@ -97,7 +101,7 @@ public class AuthService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                MeResponse.maskCpf(user.getCpf()),
+                user.getCpf(),
                 user.getRole().name(),
                 Boolean.TRUE.equals(user.getFirstLoginPendingPasswordChange()),
                 hasAcceptedTerm,

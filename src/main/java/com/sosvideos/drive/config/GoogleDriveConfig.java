@@ -46,12 +46,12 @@ public class GoogleDriveConfig {
                     .fromStream(credStream)
                     .createScoped(List.of(DriveScopes.DRIVE_READONLY));
 
-            // 30s connect + 5min read — enough for large video files without blocking indefinitely
+            // 15s connect + 60s read — prevents thread-pool exhaustion on slow Drive responses
             HttpCredentialsAdapter credentialsAdapter = new HttpCredentialsAdapter(credentials);
             HttpRequestInitializer initializer = request -> {
                 credentialsAdapter.initialize(request);
-                request.setConnectTimeout(30_000);
-                request.setReadTimeout(300_000);
+                request.setConnectTimeout(15_000);
+                request.setReadTimeout(60_000);
             };
 
             return new Drive.Builder(

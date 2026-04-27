@@ -23,7 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -47,9 +50,9 @@ public class AdminService {
             throw new BusinessException("Já existe um usuário com este CPF.");
         }
 
-        String initialPassword = (request.getCpf() != null && !request.getCpf().isBlank())
-                ? request.getCpf().replaceAll("\\D", "")
-                : request.getEmail();
+        // Senha inicial = primeiros 6 dígitos do CPF; sem CPF usa o e-mail
+        String cpfDigits = (request.getCpf() != null) ? request.getCpf().replaceAll("\\D", "") : "";
+        String initialPassword = cpfDigits.length() >= 6 ? cpfDigits.substring(0, 6) : request.getEmail();
 
         UserRole role = UserRole.SUBSCRIBER;
         if ("SUPPORT".equalsIgnoreCase(request.getRole())) {
@@ -63,7 +66,7 @@ public class AdminService {
                 .passwordHash(passwordEncoder.encode(initialPassword))
                 .role(role)
                 .active(true)
-                .firstLoginPendingPasswordChange(true)
+                .firstLoginPendingPasswordChange(false)
                 .build();
 
         user = userRepository.save(user);
@@ -87,7 +90,16 @@ public class AdminService {
                                                                     Pageable pageable) {
         String q = (search == null || search.isBlank()) ? null : search;
         Page<User> page = userRepository.findSubscribers(UserRole.SUBSCRIBER, q, includeInactive, pageable);
-        return PageResponse.from(page.map(this::toSummary));
+
+        // Batch-load subscriptions and term acceptances for the current page — avoids N+1 queries
+        Set<Long> userIds = page.stream().map(User::getId).collect(Collectors.toSet());
+        Map<Long, Subscription> subByUserId = subscriptionRepository.findLatestByUserIds(userIds)
+                .stream().collect(Collectors.toMap(s -> s.getUser().getId(), s -> s, (a, b) -> a));
+        Set<Long> acceptedTermUserIds = termAcceptanceRepository
+                .findUserIdsWithActiveTermAcceptance(userIds);
+
+        return PageResponse.from(page.map(u ->
+                toSummary(u, subByUserId.get(u.getId()), acceptedTermUserIds.contains(u.getId()))));
     }
 
     @Transactional(readOnly = true)
@@ -145,13 +157,17 @@ public class AdminService {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /** Single-user lookup — used when fetching or creating an individual subscriber. */
     private SubscriberSummaryResponse toSummary(User user) {
         Optional<Subscription> sub = subscriptionRepository
                 .findTopByUserIdOrderByCreatedAtDesc(user.getId());
-
         boolean hasAcceptedTerm = termAcceptanceRepository
                 .findActiveTermAcceptanceByUserId(user.getId()).isPresent();
+        return toSummary(user, sub.orElse(null), hasAcceptedTerm);
+    }
 
+    /** Batch-aware overload — accepts pre-fetched data to avoid N+1. */
+    private SubscriberSummaryResponse toSummary(User user, Subscription sub, boolean hasAcceptedTerm) {
         return new SubscriberSummaryResponse(
                 user.getId(),
                 user.getName(),
@@ -159,13 +175,13 @@ public class AdminService {
                 user.getCpf(),
                 Boolean.TRUE.equals(user.getActive()),
                 user.getCreatedAt(),
-                sub.map(s -> s.getId()).orElse(null),
-                sub.map(s -> s.getStatus().name()).orElse(null),
-                sub.map(Subscription::getStartDate).orElse(null),
-                sub.map(Subscription::getEndDate).orElse(null),
-                sub.map(Subscription::getLastPaymentDate).orElse(null),
-                sub.map(Subscription::getKiwifySubscriptionId).orElse(null),
-                sub.map(Subscription::getKiwifyCustomerId).orElse(null),
+                sub != null ? sub.getId() : null,
+                sub != null ? sub.getStatus().name() : null,
+                sub != null ? sub.getStartDate() : null,
+                sub != null ? sub.getEndDate() : null,
+                sub != null ? sub.getLastPaymentDate() : null,
+                sub != null ? sub.getKiwifySubscriptionId() : null,
+                sub != null ? sub.getKiwifyCustomerId() : null,
                 hasAcceptedTerm
         );
     }

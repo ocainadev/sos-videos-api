@@ -155,11 +155,12 @@ public class KiwifyWebhookService {
         return userRepository.findByEmail(customerData.getEmail())
                 .orElseGet(() -> {
                     String cpfDigits = normalizeCpf(customerData.getCpf());
+                    String initialPassword = cpfDigits.length() >= 6 ? cpfDigits.substring(0, 6) : cpfDigits;
                     User user = User.builder()
                             .name(customerData.getFullName())
                             .email(customerData.getEmail())
                             .cpf(cpfDigits)
-                            .passwordHash(passwordEncoder.encode(cpfDigits))
+                            .passwordHash(passwordEncoder.encode(initialPassword))
                             .role(UserRole.SUBSCRIBER)
                             .active(true)
                             .firstLoginPendingPasswordChange(true)

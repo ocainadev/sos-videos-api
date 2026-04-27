@@ -111,13 +111,20 @@ public class VideoService {
         log.info("Video id={} permanently deleted by admin", videoId);
     }
 
+    private static final int ADMIN_LIST_MAX = 1_000;
+
     @Transactional(readOnly = true)
     public List<VideoResponse> listAllForAdmin() {
-        return videoRepository.findAll(org.springframework.data.domain.Sort.by(
-                        org.springframework.data.domain.Sort.Direction.DESC, "publishDate", "id"))
-                .stream()
-                .map(v -> toResponse(v, false))
-                .toList();
+        org.springframework.data.domain.Page<Video> page = videoRepository.findAll(
+                org.springframework.data.domain.PageRequest.of(
+                        0, ADMIN_LIST_MAX,
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Direction.DESC, "publishDate", "id")));
+        if (page.getTotalElements() > ADMIN_LIST_MAX) {
+            log.warn("listAllForAdmin: total videos ({}) exceeds cap ({}) — only first {} returned",
+                    page.getTotalElements(), ADMIN_LIST_MAX, ADMIN_LIST_MAX);
+        }
+        return page.stream().map(v -> toResponse(v, false)).toList();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

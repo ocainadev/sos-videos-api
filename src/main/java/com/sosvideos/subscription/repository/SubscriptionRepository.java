@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
 
@@ -42,4 +43,17 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
                                                    @Param("today") LocalDate today);
 
     List<Subscription> findByStatusAndEndDateBefore(SubscriptionStatus status, LocalDate date);
+
+    /**
+     * Returns the most recent subscription for each user in the given set.
+     * Used for batch loading on admin subscriber list — avoids N+1 queries.
+     */
+    @Query("""
+            SELECT s FROM Subscription s
+            WHERE s.user.id IN :userIds
+              AND s.createdAt = (
+                  SELECT MAX(s2.createdAt) FROM Subscription s2 WHERE s2.user.id = s.user.id
+              )
+            """)
+    List<Subscription> findLatestByUserIds(@Param("userIds") Set<Long> userIds);
 }
