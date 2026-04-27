@@ -8,7 +8,6 @@ public record MeResponse(
         String email,
         String cpf,
         String role,
-        boolean firstLoginPendingPasswordChange,
         boolean hasAcceptedActiveTerm,
         String subscriptionStatus,
         LocalDate subscriptionEndDate

@@ -8,7 +8,6 @@ public record LoginResponse(
         String name,
         String email,
         String role,
-        boolean firstLoginPendingPasswordChange,
         boolean hasAcceptedActiveTerm,
         String subscriptionStatus,
         LocalDate subscriptionEndDate

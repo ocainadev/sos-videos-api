@@ -58,7 +58,6 @@ public class AuthService {
                 user.getName(),
                 user.getEmail(),
                 user.getRole().name(),
-                Boolean.TRUE.equals(user.getFirstLoginPendingPasswordChange()),
                 hasAcceptedTerm,
                 sub.map(s -> s.getStatus().name()).orElse(null),
                 sub.map(Subscription::getEndDate).orElse(null)
@@ -103,7 +102,6 @@ public class AuthService {
                 user.getEmail(),
                 user.getCpf(),
                 user.getRole().name(),
-                Boolean.TRUE.equals(user.getFirstLoginPendingPasswordChange()),
                 hasAcceptedTerm,
                 sub.map(s -> s.getStatus().name()).orElse(null),
                 sub.map(Subscription::getEndDate).orElse(null)
