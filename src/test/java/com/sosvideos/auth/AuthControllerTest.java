@@ -116,7 +116,7 @@ class AuthControllerTest extends AbstractIntegrationTest {
         String adminToken = loginAndGetToken(adminEmail, adminPassword);
         String userEmail = "changepass@sostest.com";
         String cpf = "11100011100";
-        String initialPassword = cpf;
+        String initialPassword = cpf.substring(0, 6); // 6 primeiros dígitos
 
         createSubscriberAndLogin(adminToken, "Troca Senha User", userEmail, cpf);
 

@@ -73,7 +73,7 @@ public abstract class AbstractIntegrationTest {
 
     /**
      * Cria um assinante via API de admin e retorna o token JWT dele.
-     * Senha inicial = CPF (somente dígitos).
+     * Senha inicial = 6 primeiros dígitos do CPF.
      */
     protected String createSubscriberAndLogin(String adminToken, String name,
                                                String email, String cpf) throws Exception {
@@ -83,11 +83,13 @@ public abstract class AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated());
-        return loginAndGetToken(email, cpf.replaceAll("\\D", ""));
+        String digits = cpf.replaceAll("\\D", "");
+        return loginAndGetToken(email, digits.substring(0, Math.min(6, digits.length())));
     }
 
     /**
      * Cria um usuário SUPPORT via API de admin e retorna o token JWT dele.
+     * Senha inicial = 6 primeiros dígitos do CPF.
      */
     protected String createSupportAndLogin(String adminToken, String name,
                                             String email, String cpf) throws Exception {
@@ -98,7 +100,8 @@ public abstract class AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated());
-        return loginAndGetToken(email, cpf.replaceAll("\\D", ""));
+        String digits = cpf.replaceAll("\\D", "");
+        return loginAndGetToken(email, digits.substring(0, Math.min(6, digits.length())));
     }
 
     protected String bearer(String token) {
