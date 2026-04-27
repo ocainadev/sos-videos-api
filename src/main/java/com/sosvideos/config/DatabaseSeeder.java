@@ -38,7 +38,6 @@ public class DatabaseSeeder implements ApplicationRunner {
                 .passwordHash(passwordEncoder.encode(appProperties.getAdmin().getPassword()))
                 .role(UserRole.ADMIN)
                 .active(true)
-                .firstLoginPendingPasswordChange(false)
                 .build();
         userRepository.save(admin);
         log.info("Admin user created: {}", email);

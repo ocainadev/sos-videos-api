@@ -1,15 +1,20 @@
 #!/bin/bash
-# deploy.sh — executa na VPS dentro da pasta sosvideos/
+# deploy.sh — executa dentro de sos-videos-api/
 # Uso: bash deploy/deploy.sh
 set -e
 
-echo "==> Atualizando backend..."
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
+echo "==> Atualizando backend (sos-videos-api)..."
+cd "$ROOT/sos-videos-api"
 git pull origin main
 
-echo "==> Atualizando frontend..."
-cd ../sosvideos-frontend && git pull origin master && cd ../sosvideos
+echo "==> Atualizando frontend (sos-videos-front)..."
+cd "$ROOT/sos-videos-front"
+git pull origin master
 
 echo "==> Rebuilding containers..."
+cd "$ROOT"
 docker compose build --no-cache backend frontend
 
 echo "==> Subindo..."
