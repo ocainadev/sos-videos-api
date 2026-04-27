@@ -38,5 +38,5 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     @Builder.Default
-    private Boolean firstLoginPendingPasswordChange = true;
+    private Boolean firstLoginPendingPasswordChange = false;
 }

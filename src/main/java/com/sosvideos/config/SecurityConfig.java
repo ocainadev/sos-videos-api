@@ -1,7 +1,6 @@
 package com.sosvideos.config;
 
 import com.sosvideos.config.AppProperties;
-import com.sosvideos.security.FirstLoginEnforcementFilter;
 import com.sosvideos.security.JwtAuthenticationFilter;
 import com.sosvideos.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,6 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final FirstLoginEnforcementFilter firstLoginEnforcementFilter;
     private final UserDetailsServiceImpl userDetailsService;
     private final AppProperties appProperties;
 
@@ -75,7 +73,6 @@ public class SecurityConfig {
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(firstLoginEnforcementFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 
