@@ -7,7 +7,7 @@ echo "==> Atualizando backend..."
 git pull origin main
 
 echo "==> Atualizando frontend..."
-cd ../sosvideos-frontend && git pull origin main && cd ../sosvideos
+cd ../sosvideos-frontend && git pull origin master && cd ../sosvideos
 
 echo "==> Rebuilding containers..."
 docker compose build --no-cache backend frontend
