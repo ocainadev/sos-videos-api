@@ -60,9 +60,9 @@ public class AdminService {
             throw new BusinessException("Já existe um usuário com este CPF.");
         }
 
-        // Senha inicial = primeiros 6 dígitos do CPF; sem CPF usa o e-mail
+        // Senha inicial = primeiros 6 dígitos do CPF; sem CPF usa "123456"
         String cpfDigits = (request.getCpf() != null) ? request.getCpf().replaceAll("\\D", "") : "";
-        String initialPassword = cpfDigits.length() >= 6 ? cpfDigits.substring(0, 6) : request.getEmail();
+        String initialPassword = cpfDigits.length() >= 6 ? cpfDigits.substring(0, 6) : "123456";
 
         UserRole role = UserRole.SUBSCRIBER;
         if ("SUPPORT".equalsIgnoreCase(request.getRole())) {
