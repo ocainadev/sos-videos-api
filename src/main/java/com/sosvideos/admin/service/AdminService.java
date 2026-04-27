@@ -76,7 +76,6 @@ public class AdminService {
                 .passwordHash(passwordEncoder.encode(initialPassword))
                 .role(role)
                 .active(true)
-                .firstLoginPendingPasswordChange(false)
                 .build();
 
         user = userRepository.save(user);
@@ -214,7 +213,6 @@ public class AdminService {
                                 .passwordHash(passwordEncoder.encode(initialPassword))
                                 .role(UserRole.SUBSCRIBER)
                                 .active(true)
-                                .firstLoginPendingPasswordChange(false)
                                 .build();
                         user = userRepository.save(user);
 

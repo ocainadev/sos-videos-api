@@ -163,7 +163,6 @@ public class KiwifyWebhookService {
                             .passwordHash(passwordEncoder.encode(initialPassword))
                             .role(UserRole.SUBSCRIBER)
                             .active(true)
-                            .firstLoginPendingPasswordChange(false)
                             .build();
                     User saved = userRepository.save(user);
                     log.info("New subscriber created: email={}", saved.getEmail());

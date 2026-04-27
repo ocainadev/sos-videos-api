@@ -78,7 +78,6 @@ public class AuthService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        user.setFirstLoginPendingPasswordChange(false);
         userRepository.save(user);
     }
 
