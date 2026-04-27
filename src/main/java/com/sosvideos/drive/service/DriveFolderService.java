@@ -1,6 +1,7 @@
 package com.sosvideos.drive.service;
 
 import com.google.api.services.drive.model.File;
+import com.sosvideos.common.AppConstants;
 import com.sosvideos.drive.dto.DriveFolderRequest;
 import com.sosvideos.drive.dto.DriveFolderResponse;
 import com.sosvideos.drive.entity.DriveFolder;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,9 +34,18 @@ public class DriveFolderService {
 
     @Transactional
     public DriveFolderResponse register(DriveFolderRequest request) {
+        // minAllowed = today - 7 (e.g. today=27 → 20). Dates 19 and before are rejected.
+        LocalDate minAllowed = LocalDate.now().minusDays(AppConstants.FOLDER_EXPIRY_DAYS);
+        if (request.getPublishDate().isBefore(minAllowed)) {
+            throw new BusinessException(
+                    "Não é possível cadastrar pasta para uma data anterior a " + minAllowed
+                    + ". O limite é de " + AppConstants.FOLDER_EXPIRY_DAYS + " dias no passado.");
+        }
+
         if (driveFolderRepository.existsByPublishDate(request.getPublishDate())) {
             throw new BusinessException("Já existe uma pasta cadastrada para a data: " + request.getPublishDate());
         }
+
         DriveFolder folder = DriveFolder.builder()
                 .publishDate(request.getPublishDate())
                 .driveFolderId(request.getDriveFolderId())
@@ -86,6 +97,37 @@ public class DriveFolderService {
         return driveFolderRepository.findAll().stream()
                 .map(f -> toResponse(f, null))
                 .toList();
+    }
+
+    /**
+     * Deletes all folders whose publishDate is strictly older than
+     * (today - FOLDER_EXPIRY_DAYS), together with their videos and download records.
+     *
+     * @return number of folders removed
+     */
+    @Transactional
+    public int deleteExpired() {
+        // cutoff = today - 7 (e.g. today=27 → 20). Query: publishDate < 20 → day 19 and before deleted.
+        LocalDate cutoff = LocalDate.now().minusDays(AppConstants.FOLDER_EXPIRY_DAYS);
+        List<DriveFolder> expired = driveFolderRepository.findExpired(cutoff);
+
+        if (expired.isEmpty()) {
+            log.info("deleteExpired: no expired folders found (cutoff={})", cutoff);
+            return 0;
+        }
+
+        int removed = 0;
+        for (DriveFolder folder : expired) {
+            List<Video> videos = videoRepository.findByPublishDateOrderByIdAsc(folder.getPublishDate());
+            videos.forEach(v -> downloadRepository.deleteByVideoId(v.getId()));
+            videoRepository.deleteAll(videos);
+            driveFolderRepository.delete(folder);
+            log.info("Expired folder removed: id={} date={} ({} videos)", folder.getId(), folder.getPublishDate(), videos.size());
+            removed++;
+        }
+
+        log.info("deleteExpired: {} folder(s) purged (cutoff={})", removed, cutoff);
+        return removed;
     }
 
     @Transactional

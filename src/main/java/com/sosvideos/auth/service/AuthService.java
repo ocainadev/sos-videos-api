@@ -101,7 +101,7 @@ public class AuthService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                MeResponse.maskCpf(user.getCpf()),
+                user.getCpf(),
                 user.getRole().name(),
                 Boolean.TRUE.equals(user.getFirstLoginPendingPasswordChange()),
                 hasAcceptedTerm,

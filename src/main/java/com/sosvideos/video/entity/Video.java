@@ -5,10 +5,12 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "videos")
+@Table(name = "videos", indexes = {
+        @Index(name = "idx_videos_publish_date", columnList = "publishDate"),
+        @Index(name = "idx_videos_active_publish_date", columnList = "active, publishDate")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,15 +24,6 @@ public class Video extends BaseEntity {
     @Column(nullable = false, unique = true, length = 255)
     private String driveFileId;
 
-    @Column(length = 1000)
-    private String thumbnailUrl;
-
-    @Column(columnDefinition = "BYTEA")
-    private byte[] thumbnailData;
-
-    @Column(length = 50)
-    private String thumbnailMimeType;
-
     @Column(nullable = false)
     private LocalDate publishDate;
 
@@ -42,6 +35,4 @@ public class Video extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;
-
-    private LocalDateTime expiresAt;
 }

@@ -28,11 +28,21 @@ public class KiwifyWebhookController {
     private final KiwifyWebhookService kiwifyWebhookService;
     private final AppProperties appProperties;
 
+    /** Maximum accepted payload size: 64 KB. Protects against memory exhaustion attacks. */
+    private static final int MAX_PAYLOAD_BYTES = 64 * 1024;
+
     @PostMapping("/kiwify")
     @Operation(summary = "Recebe eventos da Kiwify (compra, renovação, cancelamento, reembolso)")
     public ResponseEntity<ApiResponse<Void>> receiveKiwify(
             @RequestBody String payload,
             HttpServletRequest request) {
+
+        if (payload != null && payload.getBytes(StandardCharsets.UTF_8).length > MAX_PAYLOAD_BYTES) {
+            log.warn("Kiwify webhook rejected: payload too large ({} bytes), IP={}",
+                    payload.length(), request.getRemoteAddr());
+            return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                    .body(ApiResponse.error("Payload excede o tamanho máximo permitido."));
+        }
 
         if (!isSignatureValid(payload, request)) {
             log.warn("Kiwify webhook rejected: invalid signature from IP={}", request.getRemoteAddr());

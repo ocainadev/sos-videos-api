@@ -22,8 +22,11 @@ public class GoogleDriveService {
         this.drive = drive;
     }
 
+    private static final int MAX_LIST_FILES = 500;
+
     /**
-     * Lists all video files inside a Drive folder (paginated).
+     * Lists video files inside a Drive folder (paginated), capped at {@value MAX_LIST_FILES} files.
+     * Hard cap prevents unbounded memory usage on very large folders.
      */
     public List<File> listVideoFiles(String folderId) throws IOException {
         List<File> result = new ArrayList<>();
@@ -41,6 +44,11 @@ public class GoogleDriveService {
                 result.addAll(fileList.getFiles());
             }
             pageToken = fileList.getNextPageToken();
+
+            if (result.size() >= MAX_LIST_FILES) {
+                log.warn("listVideoFiles: folder {} has >= {} files — truncating result set", folderId, MAX_LIST_FILES);
+                break;
+            }
         } while (pageToken != null);
 
         log.debug("Listed {} files in folder {}", result.size(), folderId);
@@ -65,11 +73,4 @@ public class GoogleDriveService {
                 .execute();
     }
 
-    /**
-     * Streams the thumbnail of a Drive file to the provided OutputStream.
-     * Always fetches a fresh thumbnailLink from the Drive API (links expire).
-     * Uses plain HTTP (no auth header) because lh3.googleusercontent.com URLs
-     * are pre-signed and reject OAuth tokens from a different domain.
-     * Throws IOException if no thumbnail is available.
-     */
 }

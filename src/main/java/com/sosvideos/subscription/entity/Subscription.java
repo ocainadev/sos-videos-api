@@ -10,7 +10,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "subscriptions")
+@Table(name = "subscriptions", indexes = {
+        @Index(name = "idx_sub_user_status_end", columnList = "user_id, status, endDate"),
+        @Index(name = "idx_sub_user_created",    columnList = "user_id, createdAt")
+})
 @Getter
 @Setter
 @NoArgsConstructor
