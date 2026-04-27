@@ -98,12 +98,34 @@ public class KiwifyWebhookService {
 
         String kiwifySubId = resolveSubscriptionId(payload);
 
-        Optional<Subscription> existing = subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId);
-        if (existing.isPresent()) {
-            activateOrExtend(existing.get());
-        } else {
-            createSubscription(user, customerData, kiwifySubId);
+        // 1. Já existe assinatura com esse ID kiwify → ativa/estende
+        Optional<Subscription> byKiwifyId = subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId);
+        if (byKiwifyId.isPresent()) {
+            activateOrExtend(byKiwifyId.get());
+            return;
         }
+
+        // 2. Usuário criado manualmente tem assinatura PENDING sem kiwifySubscriptionId
+        //    → aproveita ela em vez de criar uma segunda
+        Optional<Subscription> pending = subscriptionRepository
+                .findTopByUserIdAndStatusOrderByCreatedAtDesc(user.getId(), SubscriptionStatus.PENDING);
+        if (pending.isPresent()) {
+            Subscription sub = pending.get();
+            LocalDate today = LocalDate.now();
+            sub.setKiwifySubscriptionId(kiwifySubId);
+            sub.setKiwifyCustomerId(customerData.getId());
+            sub.setStatus(SubscriptionStatus.ACTIVE);
+            sub.setStartDate(today);
+            sub.setEndDate(today.plusDays(appProperties.getSubscriptionDurationDays()));
+            sub.setLastPaymentDate(LocalDateTime.now());
+            sub.setNextDueDate(today.plusDays(appProperties.getSubscriptionDurationDays()));
+            subscriptionRepository.save(sub);
+            log.info("Pending subscription activated via webhook: userId={} kiwifySubId={}", user.getId(), kiwifySubId);
+            return;
+        }
+
+        // 3. Nenhuma assinatura prévia → cria nova
+        createSubscription(user, customerData, kiwifySubId);
     }
 
     private void handleRenewed(KiwifyWebhookPayload payload) {

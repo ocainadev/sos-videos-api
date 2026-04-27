@@ -16,6 +16,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     Optional<Subscription> findTopByUserIdOrderByCreatedAtDesc(Long userId);
 
+    Optional<Subscription> findTopByUserIdAndStatusOrderByCreatedAtDesc(Long userId, SubscriptionStatus status);
+
     @Query("""
             SELECT s FROM Subscription s
             WHERE s.user.id = :userId
