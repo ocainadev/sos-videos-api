@@ -3,6 +3,7 @@ package com.sosvideos.tutorial.service;
 import com.sosvideos.exception.ResourceNotFoundException;
 import com.sosvideos.exception.SubscriptionRequiredException;
 import com.sosvideos.exception.TermNotAcceptedException;
+import com.sosvideos.security.UserPrincipal;
 import com.sosvideos.subscription.service.SubscriptionService;
 import com.sosvideos.terms.repository.TermAcceptanceRepository;
 import com.sosvideos.tutorial.dto.TutorialRequest;
@@ -29,16 +30,16 @@ public class TutorialService {
     // ── Subscriber ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public List<TutorialResponse> listActiveForSubscriber(Long userId) {
-        requireFullAccess(userId);
+    public List<TutorialResponse> listActiveForSubscriber(UserPrincipal principal) {
+        requireFullAccess(principal);
         return tutorialRepository.findByActiveTrueOrderBySortOrderAscIdAsc().stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public TutorialResponse findByIdForSubscriber(Long id, Long userId) {
-        requireFullAccess(userId);
+    public TutorialResponse findByIdForSubscriber(Long id, UserPrincipal principal) {
+        requireFullAccess(principal);
         return tutorialRepository.findByIdAndActiveTrue(id)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Tutorial", id));
@@ -102,9 +103,10 @@ public class TutorialService {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void requireFullAccess(Long userId) {
-        subscriptionService.requireAccess(userId);
-        termAcceptanceRepository.findActiveTermAcceptanceByUserId(userId)
+    private void requireFullAccess(UserPrincipal principal) {
+        if (principal.bypassesSubscriptionCheck()) return;
+        subscriptionService.requireAccess(principal.getId());
+        termAcceptanceRepository.findActiveTermAcceptanceByUserId(principal.getId())
                 .orElseThrow(TermNotAcceptedException::new);
     }
 

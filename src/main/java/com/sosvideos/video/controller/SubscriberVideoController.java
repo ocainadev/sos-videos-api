@@ -19,7 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/subscriber")
-@PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN', 'SUPPORT')")
 @RequiredArgsConstructor
 @Tag(name = "Subscriber — Vídeos", description = "Listagem de vídeos do assinante")
 @SecurityRequirement(name = "bearerAuth")
@@ -31,7 +31,7 @@ public class SubscriberVideoController {
     @Operation(summary = "Lista vídeos visíveis ao assinante, agrupados por data")
     public ResponseEntity<ApiResponse<List<VideosByDateResponse>>> getVideos(
             @AuthenticationPrincipal UserPrincipal principal) {
-        List<VideosByDateResponse> response = videoService.getVisibleVideos(principal.getId());
+        List<VideosByDateResponse> response = videoService.getVisibleVideos(principal);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
