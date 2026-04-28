@@ -18,6 +18,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - sosvideos-net
+    deploy:
+      resources:
+        limits:
+          memory: 512m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
       interval: 10s
@@ -66,6 +70,10 @@ services:
       - google_tokens:/app/tokens
     networks:
       - sosvideos-net
+    deploy:
+      resources:
+        limits:
+          memory: 2g
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
       interval: 30s

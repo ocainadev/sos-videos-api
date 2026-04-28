@@ -4,6 +4,7 @@ import com.sosvideos.common.AppConstants;
 import com.sosvideos.download.repository.DownloadRepository;
 import com.sosvideos.exception.ResourceNotFoundException;
 import com.sosvideos.exception.TermNotAcceptedException;
+import com.sosvideos.security.UserPrincipal;
 import com.sosvideos.subscription.entity.Subscription;
 import com.sosvideos.subscription.service.SubscriptionService;
 import com.sosvideos.terms.repository.TermAcceptanceRepository;
@@ -33,12 +34,17 @@ public class VideoService {
     private final DownloadRepository downloadRepository;
 
     @Transactional(readOnly = true)
-    public List<VideosByDateResponse> getVisibleVideos(Long userId) {
-        Subscription sub = subscriptionService.requireAccess(userId);
-        requireTermAccepted(userId);
-
+    public List<VideosByDateResponse> getVisibleVideos(UserPrincipal principal) {
         LocalDate today = LocalDate.now();
-        LocalDate visibleFrom = visibleFrom(sub, today);
+        LocalDate visibleFrom;
+
+        if (principal.bypassesSubscriptionCheck()) {
+            visibleFrom = today.minusDays(AppConstants.VIDEO_VISIBILITY_DAYS - 1);
+        } else {
+            Subscription sub = subscriptionService.requireAccess(principal.getId());
+            requireTermAccepted(principal.getId());
+            visibleFrom = visibleFrom(sub, today);
+        }
 
         List<Video> videos = videoRepository.findVisible(visibleFrom, today);
 
@@ -47,7 +53,7 @@ public class VideoService {
         }
 
         List<Long> videoIds = videos.stream().map(Video::getId).toList();
-        Set<Long> downloadedIds = downloadRepository.findDownloadedVideoIds(userId, videoIds);
+        Set<Long> downloadedIds = downloadRepository.findDownloadedVideoIds(principal.getId(), videoIds);
 
         return videos.stream()
                 .collect(Collectors.groupingBy(Video::getPublishDate,
@@ -65,7 +71,7 @@ public class VideoService {
     }
 
     @Transactional(readOnly = true)
-    public Video requireAccessToVideo(Long videoId, Long userId) {
+    public Video requireAccessToVideo(Long videoId, UserPrincipal principal) {
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vídeo", videoId));
 
@@ -73,23 +79,25 @@ public class VideoService {
             throw new ResourceNotFoundException("Vídeo", videoId);
         }
 
-        Subscription sub = subscriptionService.requireAccess(userId);
-        requireTermAccepted(userId);
-
-        LocalDate visibleFrom = visibleFrom(sub, LocalDate.now());
-
-        if (video.getPublishDate().isBefore(visibleFrom)) {
-            throw new com.sosvideos.exception.BusinessException("Vídeo fora do período de acesso.");
+        if (!principal.bypassesSubscriptionCheck()) {
+            Subscription sub = subscriptionService.requireAccess(principal.getId());
+            requireTermAccepted(principal.getId());
+            LocalDate visibleFrom = visibleFrom(sub, LocalDate.now());
+            if (video.getPublishDate().isBefore(visibleFrom)) {
+                throw new com.sosvideos.exception.BusinessException("Vídeo fora do período de acesso.");
+            }
         }
 
         return video;
     }
 
     @Transactional(readOnly = true)
-    public List<Video> requireAccessToVideosOnDate(LocalDate date, Long userId) {
-        Subscription sub = subscriptionService.requireAccess(userId);
-        requireTermAccepted(userId);
-
+    public List<Video> requireAccessToVideosOnDate(LocalDate date, UserPrincipal principal) {
+        if (principal.bypassesSubscriptionCheck()) {
+            return videoRepository.findVisibleByDate(date, date);
+        }
+        Subscription sub = subscriptionService.requireAccess(principal.getId());
+        requireTermAccepted(principal.getId());
         return videoRepository.findVisibleByDate(date, visibleFrom(sub, LocalDate.now()));
     }
 

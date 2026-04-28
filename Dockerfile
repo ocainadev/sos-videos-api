@@ -21,4 +21,12 @@ USER app
 COPY --from=build /app/target/sosvideos-*.jar app.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-Duser.timezone=America/Sao_Paulo", "-jar", "app.jar"]
+
+# Respeita limite do container, heap 512MB→1.5GB, G1GC, heap dump em OOM
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+  -Xms512m -Xmx1536m \
+  -XX:+UseG1GC -XX:MaxGCPauseMillis=200 \
+  -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof \
+  -Duser.timezone=America/Sao_Paulo"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

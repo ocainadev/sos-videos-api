@@ -29,7 +29,7 @@ import java.time.LocalDate;
 @Slf4j
 @RestController
 @RequestMapping("/api/videos")
-@PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN', 'SUPPORT')")
 @RequiredArgsConstructor
 @Tag(name = "Downloads", description = "Download de vídeos (individual e encadeado por data)")
 @SecurityRequirement(name = "bearerAuth")
@@ -56,7 +56,7 @@ public class DownloadController {
             @AuthenticationPrincipal UserPrincipal principal) {
 
         // 1. Validate access + record download (committed before streaming)
-        DownloadPrep prep = downloadService.prepareDownload(id, principal.getId(), type);
+        DownloadPrep prep = downloadService.prepareDownload(id, principal, type);
 
         // 2. Build streaming body — Drive link never leaves the server
         StreamingResponseBody body = outputStream -> {
@@ -96,7 +96,7 @@ public class DownloadController {
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @AuthenticationPrincipal UserPrincipal principal) {
 
-        BatchDownloadListResponse response = downloadService.getBatchList(date, principal.getId());
+        BatchDownloadListResponse response = downloadService.getBatchList(date, principal);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

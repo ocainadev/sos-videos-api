@@ -6,6 +6,7 @@ import com.sosvideos.download.dto.DownloadPrep;
 import com.sosvideos.download.entity.Download;
 import com.sosvideos.download.enums.DownloadType;
 import com.sosvideos.download.repository.DownloadRepository;
+import com.sosvideos.security.UserPrincipal;
 import com.sosvideos.user.entity.User;
 import com.sosvideos.user.repository.UserRepository;
 import com.sosvideos.video.entity.Video;
@@ -32,10 +33,10 @@ public class DownloadService {
      * Transaction is committed BEFORE streaming begins, so the record is always saved.
      */
     @Transactional
-    public DownloadPrep prepareDownload(Long videoId, Long userId, DownloadType type) {
-        Video video = videoService.requireAccessToVideo(videoId, userId);
+    public DownloadPrep prepareDownload(Long videoId, UserPrincipal principal, DownloadType type) {
+        Video video = videoService.requireAccessToVideo(videoId, principal);
 
-        User userRef = userRepository.getReferenceById(userId);
+        User userRef = userRepository.getReferenceById(principal.getId());
         Download download = Download.builder()
                 .user(userRef)
                 .video(video)
@@ -43,7 +44,7 @@ public class DownloadService {
                 .build();
         downloadRepository.save(download);
 
-        log.info("Download recorded: userId={} videoId={} type={}", userId, videoId, type);
+        log.info("Download recorded: userId={} videoId={} type={}", principal.getId(), videoId, type);
 
         return new DownloadPrep(
                 video.getDriveFileId(),
@@ -58,8 +59,8 @@ public class DownloadService {
      * chain individual download calls sequentially.
      */
     @Transactional(readOnly = true)
-    public BatchDownloadListResponse getBatchList(LocalDate date, Long userId) {
-        List<Video> videos = videoService.requireAccessToVideosOnDate(date, userId);
+    public BatchDownloadListResponse getBatchList(LocalDate date, UserPrincipal principal) {
+        List<Video> videos = videoService.requireAccessToVideosOnDate(date, principal);
 
         List<VideoDownloadItem> items = videos.stream()
                 .map(v -> new VideoDownloadItem(
@@ -70,7 +71,7 @@ public class DownloadService {
                 ))
                 .toList();
 
-        log.debug("Batch list for date={}: {} videos available for userId={}", date, items.size(), userId);
+        log.debug("Batch list for date={}: {} videos available for userId={}", date, items.size(), principal.getId());
         return new BatchDownloadListResponse(date, items.size(), items);
     }
 }

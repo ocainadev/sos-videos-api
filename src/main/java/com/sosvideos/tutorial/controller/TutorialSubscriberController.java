@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/subscriber/tutorials")
-@PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN', 'SUPPORT')")
 @RequiredArgsConstructor
 @Tag(name = "Subscriber — Tutoriais", description = "Central de tutoriais e onboarding")
 @SecurityRequirement(name = "bearerAuth")
@@ -33,7 +33,7 @@ public class TutorialSubscriberController {
     public ResponseEntity<ApiResponse<List<TutorialResponse>>> listAll(
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(
-                ApiResponse.success(tutorialService.listActiveForSubscriber(principal.getId())));
+                ApiResponse.success(tutorialService.listActiveForSubscriber(principal)));
     }
 
     @GetMapping("/{id}")
@@ -45,6 +45,6 @@ public class TutorialSubscriberController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(
-                ApiResponse.success(tutorialService.findByIdForSubscriber(id, principal.getId())));
+                ApiResponse.success(tutorialService.findByIdForSubscriber(id, principal)));
     }
 }
