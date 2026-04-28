@@ -162,11 +162,24 @@ public class DriveFolderService {
                 || (name != null && name.toLowerCase().endsWith(".txt"));
     }
 
+    private static final String GOOGLE_DOC_MIME = "application/vnd.google-apps.document";
+
     private void upsertDateNote(File driveFile, DriveFolder folder) {
+        String mime = driveFile.getMimeType();
+        log.info("Processing txt file: name={} mimeType={} date={}", driveFile.getName(), mime, folder.getPublishDate());
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            googleDriveService.streamFile(driveFile.getId(), baos);
+
+            // Google Drive auto-converte .txt para Google Doc — nesse caso usa export
+            if (GOOGLE_DOC_MIME.equalsIgnoreCase(mime)) {
+                log.info("File was auto-converted to Google Doc — exporting as plain text");
+                googleDriveService.exportAsPlainText(driveFile.getId(), baos);
+            } else {
+                googleDriveService.streamFile(driveFile.getId(), baos);
+            }
+
             String content = baos.toString(StandardCharsets.UTF_8).trim();
+            log.info("DateNote content read ({} chars) for date={}", content.length(), folder.getPublishDate());
 
             dateNoteRepository.findByDate(folder.getPublishDate()).ifPresentOrElse(
                     note -> {
@@ -184,7 +197,7 @@ public class DriveFolderService {
                     }
             );
         } catch (Exception e) {
-            log.warn("Failed to read txt file '{}' from Drive: {}", driveFile.getName(), e.getMessage());
+            log.error("Failed to read txt file '{}' (mime={}) from Drive: {}", driveFile.getName(), mime, e.getMessage(), e);
         }
     }
 
