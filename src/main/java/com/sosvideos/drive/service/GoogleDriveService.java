@@ -73,4 +73,13 @@ public class GoogleDriveService {
                 .execute();
     }
 
+    /**
+     * Exports a Google Workspace file (e.g. Google Doc auto-converted from .txt)
+     * as plain text to the provided OutputStream.
+     */
+    public void exportAsPlainText(String fileId, OutputStream outputStream) throws IOException {
+        drive.files().export(fileId, "text/plain")
+                .executeMediaAndDownloadTo(outputStream);
+    }
+
 }
