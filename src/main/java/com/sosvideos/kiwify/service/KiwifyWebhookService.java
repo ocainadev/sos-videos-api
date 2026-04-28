@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 @Slf4j
@@ -130,45 +131,70 @@ public class KiwifyWebhookService {
 
     private void handleRenewed(KiwifyWebhookPayload payload) {
         String kiwifySubId = resolveSubscriptionId(payload);
-        subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId).ifPresentOrElse(sub -> {
-            LocalDate base = (sub.getEndDate() != null && sub.getEndDate().isAfter(LocalDate.now()))
-                    ? sub.getEndDate() : LocalDate.now();
-            sub.setStatus(SubscriptionStatus.ACTIVE);
-            sub.setEndDate(base.plusDays(appProperties.getSubscriptionDurationDays()));
-            sub.setLastPaymentDate(LocalDateTime.now());
-            sub.setNextDueDate(base.plusDays(appProperties.getSubscriptionDurationDays()));
-            subscriptionRepository.save(sub);
-            log.info("Subscription renewed for kiwifySubId={}, new endDate={}", kiwifySubId, sub.getEndDate());
-        }, () -> log.warn("Renewed event received but subscription not found: {}", kiwifySubId));
+        Subscription sub = findSubscriptionByPayload(payload, kiwifySubId);
+        if (sub == null) { log.warn("Renewed event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
+        LocalDate base = (sub.getEndDate() != null && sub.getEndDate().isAfter(LocalDate.now()))
+                ? sub.getEndDate() : LocalDate.now();
+        sub.setStatus(SubscriptionStatus.ACTIVE);
+        sub.setEndDate(base.plusDays(appProperties.getSubscriptionDurationDays()));
+        sub.setLastPaymentDate(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
+        sub.setNextDueDate(base.plusDays(appProperties.getSubscriptionDurationDays()));
+        subscriptionRepository.save(sub);
+        log.info("Subscription renewed for kiwifySubId={}, new endDate={}", kiwifySubId, sub.getEndDate());
     }
 
     private void handleCanceled(KiwifyWebhookPayload payload) {
         String kiwifySubId = resolveSubscriptionId(payload);
-        subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId).ifPresentOrElse(sub -> {
-            sub.setStatus(SubscriptionStatus.CANCELED);
-            subscriptionRepository.save(sub);
-            // endDate is NOT changed — user retains access until the end of the paid period
-            log.info("Subscription canceled for kiwifySubId={}, access until={}", kiwifySubId, sub.getEndDate());
-        }, () -> log.warn("Canceled event received but subscription not found: {}", kiwifySubId));
+        Subscription sub = findSubscriptionByPayload(payload, kiwifySubId);
+        if (sub == null) { log.warn("Canceled event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
+        sub.setStatus(SubscriptionStatus.CANCELED);
+        subscriptionRepository.save(sub);
+        // endDate is NOT changed — user retains access until the end of the paid period
+        log.info("Subscription canceled for kiwifySubId={}, access until={}", kiwifySubId, sub.getEndDate());
     }
 
     private void handleRefunded(KiwifyWebhookPayload payload) {
         String kiwifySubId = resolveSubscriptionId(payload);
-        subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId).ifPresentOrElse(sub -> {
-            sub.setStatus(SubscriptionStatus.REFUNDED);
-            sub.setEndDate(LocalDate.now().minusDays(1)); // remove access immediately
-            subscriptionRepository.save(sub);
-            log.info("Subscription refunded, access removed for kiwifySubId={}", kiwifySubId);
-        }, () -> log.warn("Refund event received but subscription not found: {}", kiwifySubId));
+        Subscription sub = findSubscriptionByPayload(payload, kiwifySubId);
+        if (sub == null) { log.warn("Refund event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
+        sub.setStatus(SubscriptionStatus.REFUNDED);
+        sub.setEndDate(LocalDate.now().minusDays(1)); // remove access immediately
+        subscriptionRepository.save(sub);
+        log.info("Subscription refunded, access removed for kiwifySubId={}", kiwifySubId);
     }
 
     private void handleOverdue(KiwifyWebhookPayload payload) {
         String kiwifySubId = resolveSubscriptionId(payload);
-        subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId).ifPresentOrElse(sub -> {
-            sub.setStatus(SubscriptionStatus.EXPIRED);
-            subscriptionRepository.save(sub);
-            log.info("Subscription expired (overdue) for kiwifySubId={}", kiwifySubId);
-        }, () -> log.warn("Overdue event received but subscription not found: {}", kiwifySubId));
+        Subscription sub = findSubscriptionByPayload(payload, kiwifySubId);
+        if (sub == null) { log.warn("Overdue event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
+        sub.setStatus(SubscriptionStatus.EXPIRED);
+        subscriptionRepository.save(sub);
+        log.info("Subscription expired (overdue) for kiwifySubId={}", kiwifySubId);
+    }
+
+    /**
+     * Busca a assinatura pelo kiwifySubscriptionId.
+     * Se não encontrar (ex: usuário criado manualmente ou via CSV sem esse campo),
+     * cai no fallback por e-mail do cliente e vincula o kiwifySubscriptionId.
+     */
+    private Subscription findSubscriptionByPayload(KiwifyWebhookPayload payload, String kiwifySubId) {
+        Optional<Subscription> byId = subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId);
+        if (byId.isPresent()) return byId.get();
+
+        // Fallback: busca pelo e-mail do cliente
+        if (payload.getCustomer() == null || payload.getCustomer().getEmail() == null) return null;
+        Optional<User> user = userRepository.findByEmail(payload.getCustomer().getEmail());
+        if (user.isEmpty()) return null;
+
+        Optional<Subscription> latest = subscriptionRepository.findTopByUserIdOrderByCreatedAtDesc(user.get().getId());
+        if (latest.isEmpty()) return null;
+
+        // Vincula o kiwifySubscriptionId para próximos eventos
+        Subscription sub = latest.get();
+        sub.setKiwifySubscriptionId(kiwifySubId);
+        if (payload.getCustomer().getId() != null) sub.setKiwifyCustomerId(payload.getCustomer().getId());
+        log.info("Subscription linked via email fallback: userId={} kiwifySubId={}", user.get().getId(), kiwifySubId);
+        return sub;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
