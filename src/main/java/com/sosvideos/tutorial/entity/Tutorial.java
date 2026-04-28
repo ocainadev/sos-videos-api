@@ -27,6 +27,9 @@ public class Tutorial extends BaseEntity {
     @Column(length = 1000)
     private String url;
 
+    @Column(length = 1000)
+    private String thumbnailUrl;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;

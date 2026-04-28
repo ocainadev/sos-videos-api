@@ -12,6 +12,8 @@ public interface TermAcceptanceRepository extends JpaRepository<TermAcceptance, 
 
     boolean existsByUserIdAndTermId(Long userId, Long termId);
 
+    void deleteByTermId(Long termId);
+
     @Query("""
             SELECT ta FROM TermAcceptance ta
             WHERE ta.user.id = :userId

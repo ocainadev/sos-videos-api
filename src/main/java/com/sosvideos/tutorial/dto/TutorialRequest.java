@@ -30,6 +30,10 @@ public class TutorialRequest {
              message = "URL inválida — deve começar com http:// ou https://")
     private String url;
 
+    @Pattern(regexp = "^https?://[^\\s]{3,2000}$",
+             message = "URL de thumbnail inválida")
+    private String thumbnailUrl;
+
     private boolean active = true;
 
     private int sortOrder = 0;

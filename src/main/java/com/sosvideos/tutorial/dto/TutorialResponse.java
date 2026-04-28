@@ -8,6 +8,7 @@ public record TutorialResponse(
         String description,
         String contentType,
         String url,
+        String thumbnailUrl,
         boolean active,
         int sortOrder,
         LocalDateTime createdAt
