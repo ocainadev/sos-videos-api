@@ -53,6 +53,7 @@ public class TutorialService {
                 .description(request.getDescription())
                 .contentType(request.getContentType())
                 .url(request.getUrl())
+                .thumbnailUrl(request.getThumbnailUrl())
                 .active(request.isActive())
                 .sortOrder(request.getSortOrder())
                 .build();
@@ -67,9 +68,18 @@ public class TutorialService {
         tutorial.setDescription(request.getDescription());
         tutorial.setContentType(request.getContentType());
         tutorial.setUrl(request.getUrl());
+        tutorial.setThumbnailUrl(request.getThumbnailUrl());
         tutorial.setActive(request.isActive());
         tutorial.setSortOrder(request.getSortOrder());
         return toResponse(tutorialRepository.save(tutorial));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Tutorial tutorial = tutorialRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tutorial", id));
+        tutorialRepository.delete(tutorial);
+        log.info("Tutorial id={} deleted", id);
     }
 
     @Transactional
@@ -105,6 +115,7 @@ public class TutorialService {
                 t.getDescription(),
                 t.getContentType().name(),
                 t.getUrl(),
+                t.getThumbnailUrl(),
                 t.getActive(),
                 t.getSortOrder(),
                 t.getCreatedAt()

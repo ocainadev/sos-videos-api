@@ -20,7 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -96,18 +98,40 @@ public class AdminService {
     @Transactional(readOnly = true)
     public PageResponse<SubscriberSummaryResponse> listSubscribers(String search,
                                                                     boolean includeInactive,
-                                                                    Pageable pageable) {
+                                                                    String sortBy,
+                                                                    String sortDir,
+                                                                    int page,
+                                                                    int size) {
         String q = (search == null || search.isBlank()) ? null : search;
-        Page<User> page = userRepository.findSubscribers(UserRole.SUBSCRIBER, q, includeInactive, pageable);
+        int safeSize = Math.min(size, 100);
+
+        Page<User> userPage;
+        if ("endDate".equalsIgnoreCase(sortBy)) {
+            // Sort by subscription endDate via LEFT JOIN query (NULLS LAST)
+            // direction is always ASC for endDate (soonest expiring first)
+            Pageable pageable = PageRequest.of(page, safeSize);
+            userPage = userRepository.findSubscribersSortedByEndDate(UserRole.SUBSCRIBER, q, includeInactive, pageable);
+        } else {
+            // Sort by user fields (name, email, role, createdAt)
+            String field = switch (sortBy == null ? "" : sortBy.toLowerCase()) {
+                case "name"  -> "name";
+                case "email" -> "email";
+                case "role"  -> "role";
+                default      -> "createdAt";
+            };
+            Sort.Direction dir = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            Pageable pageable = PageRequest.of(page, safeSize, Sort.by(dir, field));
+            userPage = userRepository.findSubscribers(UserRole.SUBSCRIBER, q, includeInactive, pageable);
+        }
 
         // Batch-load subscriptions and term acceptances for the current page — avoids N+1 queries
-        Set<Long> userIds = page.stream().map(User::getId).collect(Collectors.toSet());
+        Set<Long> userIds = userPage.stream().map(User::getId).collect(Collectors.toSet());
         Map<Long, Subscription> subByUserId = subscriptionRepository.findLatestByUserIds(userIds)
                 .stream().collect(Collectors.toMap(s -> s.getUser().getId(), s -> s, (a, b) -> a));
         Set<Long> acceptedTermUserIds = termAcceptanceRepository
                 .findUserIdsWithActiveTermAcceptance(userIds);
 
-        return PageResponse.from(page.map(u ->
+        return PageResponse.from(userPage.map(u ->
                 toSummary(u, subByUserId.get(u.getId()), acceptedTermUserIds.contains(u.getId()))));
     }
 

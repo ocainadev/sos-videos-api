@@ -52,6 +52,13 @@ public class TutorialAdminController {
         return ResponseEntity.ok(ApiResponse.ok("Status do tutorial atualizado."));
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Exclui um tutorial")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        tutorialService.delete(id);
+        return ResponseEntity.ok(ApiResponse.ok("Tutorial excluído."));
+    }
+
     @GetMapping
     @Operation(summary = "Lista todos os tutoriais (incluindo inativos)")
     public ResponseEntity<ApiResponse<List<TutorialResponse>>> listAll() {

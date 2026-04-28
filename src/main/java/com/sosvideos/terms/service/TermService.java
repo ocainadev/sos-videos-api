@@ -102,6 +102,15 @@ public class TermService {
         return toResponse(termRepository.save(term));
     }
 
+    @Transactional
+    public void delete(Long id) {
+        Term term = termRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Termo", id));
+        termAcceptanceRepository.deleteByTermId(id);
+        termRepository.delete(term);
+        log.info("Term id={} deleted along with its acceptances", id);
+    }
+
     @Transactional(readOnly = true)
     public List<TermResponse> listAll() {
         return termRepository.findAllByOrderByCreatedAtDesc().stream()

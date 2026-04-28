@@ -14,8 +14,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -44,15 +42,17 @@ public class AdminController {
     }
 
     @GetMapping("/subscribers")
-    @Operation(summary = "Lista assinantes com paginação, busca e filtro de ativos")
+    @Operation(summary = "Lista assinantes com paginação, busca, filtro e ordenação")
     public ResponseEntity<ApiResponse<PageResponse<SubscriberSummaryResponse>>> listSubscribers(
-            @Parameter(description = "Busca por nome ou email")   @RequestParam(required = false)            String search,
-            @Parameter(description = "Inclui inativos na lista")  @RequestParam(defaultValue = "false")      boolean includeInactive,
-            @Parameter(description = "Página (0-based)")          @RequestParam(defaultValue = "0")          int page,
-            @Parameter(description = "Tamanho da página")         @RequestParam(defaultValue = "20")         int size) {
+            @Parameter(description = "Busca por nome ou email")           @RequestParam(required = false)       String search,
+            @Parameter(description = "Inclui inativos na lista")          @RequestParam(defaultValue = "false") boolean includeInactive,
+            @Parameter(description = "Página (0-based)")                  @RequestParam(defaultValue = "0")     int page,
+            @Parameter(description = "Tamanho da página")                 @RequestParam(defaultValue = "20")    int size,
+            @Parameter(description = "Campo de ordenação (endDate, name, email)") @RequestParam(defaultValue = "endDate") String sort,
+            @Parameter(description = "Direção (asc, desc)")               @RequestParam(defaultValue = "asc")   String dir) {
 
-        Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        return ResponseEntity.ok(ApiResponse.success(adminService.listSubscribers(search, includeInactive, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(
+                adminService.listSubscribers(search, includeInactive, sort, dir, page, size)));
     }
 
     @GetMapping("/subscribers/{id}")

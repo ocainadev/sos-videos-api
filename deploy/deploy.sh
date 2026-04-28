@@ -23,7 +23,7 @@ echo "    Commit: $(git log --oneline -1)"
 echo ""
 echo "==> Rebuilding containers..."
 cd "$ROOT"
-docker compose build --no-cache backend frontend
+docker compose build backend frontend
 
 echo ""
 echo "==> Subindo..."

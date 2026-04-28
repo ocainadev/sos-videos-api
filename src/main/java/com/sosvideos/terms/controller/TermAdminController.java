@@ -41,6 +41,13 @@ public class TermAdminController {
         return ResponseEntity.ok(ApiResponse.success(termService.update(id, request)));
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Exclui um termo e seus aceites")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        termService.delete(id);
+        return ResponseEntity.ok(ApiResponse.ok("Termo excluído."));
+    }
+
     @GetMapping
     @Operation(summary = "Lista todos os termos")
     public ResponseEntity<ApiResponse<List<TermResponse>>> listAll() {
