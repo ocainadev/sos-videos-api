@@ -18,6 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -85,8 +87,12 @@ public class DriveFolderService {
 
         AtomicInteger count = new AtomicInteger(0);
         for (File driveFile : driveFiles) {
-            upsertVideo(driveFile, folder);
-            count.incrementAndGet();
+            if (isTxtFile(driveFile)) {
+                upsertDateNote(driveFile, folder);
+            } else {
+                upsertVideo(driveFile, folder);
+                count.incrementAndGet();
+            }
         }
 
         folder.setSyncStatus(SyncStatus.SYNCED);
@@ -148,6 +154,39 @@ public class DriveFolderService {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private boolean isTxtFile(File driveFile) {
+        String mime = driveFile.getMimeType();
+        String name = driveFile.getName();
+        return "text/plain".equalsIgnoreCase(mime)
+                || (name != null && name.toLowerCase().endsWith(".txt"));
+    }
+
+    private void upsertDateNote(File driveFile, DriveFolder folder) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            googleDriveService.streamFile(driveFile.getId(), baos);
+            String content = baos.toString(StandardCharsets.UTF_8).trim();
+
+            dateNoteRepository.findByDate(folder.getPublishDate()).ifPresentOrElse(
+                    note -> {
+                        note.setContent(content);
+                        dateNoteRepository.save(note);
+                        log.info("DateNote updated from txt file: date={} file={}", folder.getPublishDate(), driveFile.getName());
+                    },
+                    () -> {
+                        dateNoteRepository.save(
+                                com.sosvideos.datenote.entity.DateNote.builder()
+                                        .date(folder.getPublishDate())
+                                        .content(content)
+                                        .build());
+                        log.info("DateNote created from txt file: date={} file={}", folder.getPublishDate(), driveFile.getName());
+                    }
+            );
+        } catch (Exception e) {
+            log.warn("Failed to read txt file '{}' from Drive: {}", driveFile.getName(), e.getMessage());
+        }
+    }
 
     private void upsertVideo(File driveFile, DriveFolder folder) {
         videoRepository.findByDriveFileId(driveFile.getId()).ifPresentOrElse(
