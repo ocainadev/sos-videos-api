@@ -9,6 +9,7 @@ import com.sosvideos.drive.enums.SyncStatus;
 import com.sosvideos.drive.repository.DriveFolderRepository;
 import com.sosvideos.exception.BusinessException;
 import com.sosvideos.exception.ResourceNotFoundException;
+import com.sosvideos.datenote.repository.DateNoteRepository;
 import com.sosvideos.download.repository.DownloadRepository;
 import com.sosvideos.video.entity.Video;
 import com.sosvideos.video.repository.VideoRepository;
@@ -32,6 +33,7 @@ public class DriveFolderService {
     private final VideoRepository videoRepository;
     private final DownloadRepository downloadRepository;
     private final GoogleDriveService googleDriveService;
+    private final DateNoteRepository dateNoteRepository;
 
     @Transactional
     public DriveFolderResponse register(DriveFolderRequest request) {
@@ -122,6 +124,7 @@ public class DriveFolderService {
             List<Video> videos = videoRepository.findByPublishDateOrderByIdAsc(folder.getPublishDate());
             videos.forEach(v -> downloadRepository.deleteByVideoId(v.getId()));
             videoRepository.deleteAll(videos);
+            dateNoteRepository.findByDate(folder.getPublishDate()).ifPresent(dateNoteRepository::delete);
             driveFolderRepository.delete(folder);
             log.info("Expired folder removed: id={} date={} ({} videos)", folder.getId(), folder.getPublishDate(), videos.size());
             removed++;
@@ -139,6 +142,7 @@ public class DriveFolderService {
         List<Video> videos = videoRepository.findByPublishDateOrderByIdAsc(folder.getPublishDate());
         videos.forEach(v -> downloadRepository.deleteByVideoId(v.getId()));
         videoRepository.deleteAll(videos);
+        dateNoteRepository.findByDate(folder.getPublishDate()).ifPresent(dateNoteRepository::delete);
         driveFolderRepository.delete(folder);
         log.info("DriveFolder id={} deleted along with {} videos (hard delete)", folderId, videos.size());
     }
