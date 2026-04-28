@@ -33,7 +33,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                                @Param("includeInactive") boolean includeInactive,
                                Pageable pageable);
 
-    @Query("""
+    @Query(value = """
             SELECT u FROM User u
             LEFT JOIN Subscription s ON s.user.id = u.id
               AND s.createdAt = (SELECT MAX(s2.createdAt) FROM Subscription s2 WHERE s2.user.id = u.id)
@@ -43,6 +43,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 OR LOWER(u.name)  LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
                 OR LOWER(u.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
             ORDER BY s.endDate ASC NULLS LAST
+            """,
+            countQuery = """
+            SELECT COUNT(u) FROM User u
+            WHERE u.role = :role
+              AND (:includeInactive = true OR u.active = true)
+              AND (CAST(:search AS string) IS NULL
+                OR LOWER(u.name)  LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                OR LOWER(u.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
             """)
     Page<User> findSubscribersSortedByEndDate(@Param("role") UserRole role,
                                               @Param("search") String search,

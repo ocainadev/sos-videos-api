@@ -116,7 +116,6 @@ public class AdminService {
             String field = switch (sortBy == null ? "" : sortBy.toLowerCase()) {
                 case "name"  -> "name";
                 case "email" -> "email";
-                case "role"  -> "role";
                 default      -> "createdAt";
             };
             Sort.Direction dir = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
