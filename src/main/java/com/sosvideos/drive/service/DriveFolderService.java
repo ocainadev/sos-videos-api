@@ -108,6 +108,75 @@ public class DriveFolderService {
                 .toList();
     }
 
+    public List<java.util.Map<String, String>> listFilesByDate(LocalDate date) {
+        DriveFolder folder = driveFolderRepository.findByPublishDate(date)
+                .orElseThrow(() -> new BusinessException("Nenhuma pasta cadastrada para " + date));
+        try {
+            return googleDriveService.listVideoFiles(folder.getDriveFolderId()).stream()
+                    .map(f -> java.util.Map.of(
+                            "id",       f.getId() != null ? f.getId() : "",
+                            "name",     f.getName() != null ? f.getName() : "",
+                            "mimeType", f.getMimeType() != null ? f.getMimeType() : "",
+                            "isTxt",    String.valueOf(isTxtFile(f))
+                    ))
+                    .toList();
+        } catch (Exception e) {
+            throw new BusinessException("Erro ao listar arquivos: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public String reimportNoteByDate(LocalDate date) {
+        DriveFolder folder = driveFolderRepository.findByPublishDate(date)
+                .orElseThrow(() -> new BusinessException("Nenhuma pasta cadastrada para " + date));
+
+        List<File> driveFiles;
+        try {
+            driveFiles = googleDriveService.listVideoFiles(folder.getDriveFolderId());
+        } catch (Exception e) {
+            throw new BusinessException("Erro ao listar arquivos: " + e.getMessage());
+        }
+
+        StringBuilder result = new StringBuilder();
+        result.append("Total de arquivos na pasta: ").append(driveFiles.size()).append("\n");
+        driveFiles.forEach(f -> result.append("  - ").append(f.getName()).append(" | ").append(f.getMimeType()).append("\n"));
+
+        List<File> txtFiles = driveFiles.stream().filter(this::isTxtFile).toList();
+        if (txtFiles.isEmpty()) {
+            result.append("\nNenhum arquivo .txt detectado.");
+            return result.toString();
+        }
+
+        for (File f : txtFiles) {
+            String mime = f.getMimeType();
+            result.append("\nProcessando: ").append(f.getName()).append(" (").append(mime).append(")\n");
+            try {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                if (GOOGLE_DOC_MIME.equalsIgnoreCase(mime)) {
+                    result.append("→ Google Doc detectado, usando export\n");
+                    googleDriveService.exportAsPlainText(f.getId(), baos);
+                } else {
+                    result.append("→ Arquivo texto puro, usando streamFile\n");
+                    googleDriveService.streamFile(f.getId(), baos);
+                }
+                String content = baos.toString(StandardCharsets.UTF_8).trim();
+                result.append("→ Conteúdo: ").append(content.length()).append(" chars\n");
+                result.append("→ Prévia:\n").append(content.length() > 300 ? content.substring(0, 300) + "..." : content).append("\n");
+
+                dateNoteRepository.findByDate(date).ifPresentOrElse(
+                        note -> { note.setContent(content); dateNoteRepository.save(note); },
+                        () -> dateNoteRepository.save(
+                                com.sosvideos.datenote.entity.DateNote.builder()
+                                        .date(date).content(content).build())
+                );
+                result.append("✓ Salvo para ").append(date).append("\n");
+            } catch (Exception e) {
+                result.append("✗ ERRO: ").append(e.getMessage()).append("\n");
+            }
+        }
+        return result.toString();
+    }
+
     /**
      * Deletes all folders whose publishDate is strictly older than
      * (today - FOLDER_EXPIRY_DAYS), together with their videos and download records.
