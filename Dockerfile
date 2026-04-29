@@ -22,9 +22,13 @@ COPY --from=build /app/target/sosvideos-*.jar app.jar
 
 EXPOSE 8080
 
-# Respeita limite do container, heap 512MB→1.5GB, G1GC, heap dump em OOM
+# Respeita limite do container, G1GC, heap dump em OOM.
+# -Xmx512m: a app é I/O-bound (streaming), não precisa de heap grande.
+# -XX:MaxDirectMemorySize=128m: NIO/networking aloca fora do heap por padrão
+#   até Xmx (512 MB) — sem esse cap a VPS esgota RAM mesmo com heap pequeno.
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
-  -Xms512m -Xmx1536m \
+  -Xms128m -Xmx512m \
+  -XX:MaxDirectMemorySize=128m \
   -XX:+UseG1GC -XX:MaxGCPauseMillis=200 \
   -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof \
   -Duser.timezone=America/Sao_Paulo"

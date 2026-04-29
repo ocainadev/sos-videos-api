@@ -73,7 +73,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2g
+          # Heap 512m + direct 128m + metaspace/code ~300m + overhead ≈ 1 GB.
+          # Limite de 1.2g dá margem sem desperdiçar RAM da VPS.
+          memory: 1200m
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
@@ -95,6 +97,10 @@ services:
       - sosvideos-net
     ports:
       - "127.0.0.1:8081:80"   # só localhost — Nginx do host expõe para internet
+    deploy:
+      resources:
+        limits:
+          memory: 128m   # nginx estático: 50–80 MB é mais que suficiente
 
 volumes:
   postgres_data:
