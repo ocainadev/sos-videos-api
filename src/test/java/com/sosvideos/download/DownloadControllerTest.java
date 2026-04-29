@@ -6,31 +6,23 @@ import com.sosvideos.video.repository.VideoRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.time.LocalDate;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 /**
  * Testes de integração para o fluxo de download baseado em token:
  * <ol>
  *   <li>POST /api/videos/{id}/download/token → gera token (JWT obrigatório)</li>
- *   <li>GET  /api/download/{token}           → streaming com application/octet-stream</li>
+ *   <li>GET  /api/download/{token}           → 302 redirect para Google Drive CDN</li>
  * </ol>
  */
-@DisplayName("Download — geração de token e streaming")
+@DisplayName("Download — geração de token e redirect para Drive CDN")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DownloadControllerTest extends AbstractIntegrationTest {
@@ -40,8 +32,6 @@ class DownloadControllerTest extends AbstractIntegrationTest {
 
     private String adminToken;
     private Long videoId;
-
-    private static final String FAKE_CONTENT = "fake-video-bytes";
 
     @BeforeAll
     void setup() throws Exception {
@@ -58,21 +48,9 @@ class DownloadControllerTest extends AbstractIntegrationTest {
         videoId = video.getId();
     }
 
-    /** @MockitoBean reseta mocks após cada teste — reconfigura aqui. */
     @BeforeEach
     void setupMock() throws Exception {
-        doAnswer(invocation -> {
-            OutputStream out = invocation.getArgument(1);
-            try {
-                out.write(FAKE_CONTENT.getBytes());
-                out.flush();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            return null;
-        }).when(googleDriveService).streamFile(eq("drive-file-id-test-123"), any(OutputStream.class));
-
-        when(googleDriveService.buildTempDownloadUrl(anyString()))
+        when(googleDriveService.buildTempDownloadUrl("drive-file-id-test-123"))
                 .thenReturn("https://googleapis.com/fake");
     }
 
@@ -116,21 +94,18 @@ class DownloadControllerTest extends AbstractIntegrationTest {
 
     @Test
     @Order(4)
-    @DisplayName("Token válido — retorna 200, application/octet-stream e corpo do arquivo")
-    void downloadByToken_tokenValido_retorna200EStream() throws Exception {
+    @DisplayName("Token válido — retorna 302 redirect para o Google Drive CDN")
+    void downloadByToken_tokenValido_retorna302ComRedirect() throws Exception {
         String token = obtainToken(adminToken, videoId, "SINGLE");
 
-        var asyncResult = mockMvc.perform(get("/api/download/" + token))
-                .andExpect(request().asyncStarted())
-                .andReturn();
-
-        byte[] body = mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", containsString("application/octet-stream")))
-                .andExpect(header().string("Content-Disposition", containsString("attachment")))
-                .andReturn().getResponse().getContentAsByteArray();
-
-        assertThat(new String(body)).isEqualTo(FAKE_CONTENT);
+        mockMvc.perform(get("/api/download/" + token))
+                .andExpect(status().isFound())                                    // 302
+                .andExpect(header().string(
+                        "Location",
+                        containsString("drive.google.com/uc?export=download")))   // CDN do Drive
+                .andExpect(header().string(
+                        "Location",
+                        containsString("drive-file-id-test-123")));               // file ID correto
     }
 
     @Test
@@ -147,9 +122,8 @@ class DownloadControllerTest extends AbstractIntegrationTest {
     void downloadByToken_usoUnico_segundaTentativaRetorna410() throws Exception {
         String token = obtainToken(adminToken, videoId, "SINGLE");
 
-        var asyncResult = mockMvc.perform(get("/api/download/" + token))
-                .andExpect(request().asyncStarted()).andReturn();
-        mockMvc.perform(asyncDispatch(asyncResult)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/download/" + token))
+                .andExpect(status().isFound());
 
         mockMvc.perform(get("/api/download/" + token))
                 .andExpect(status().isGone());
@@ -157,16 +131,14 @@ class DownloadControllerTest extends AbstractIntegrationTest {
 
     @Test
     @Order(7)
-    @DisplayName("Token BATCH — retorna 200 com application/octet-stream")
-    void downloadByToken_tipoBatch_retorna200() throws Exception {
+    @DisplayName("Token BATCH — retorna 302 redirect para o Drive CDN")
+    void downloadByToken_tipoBatch_retorna302() throws Exception {
         String token = obtainToken(adminToken, videoId, "BATCH");
 
-        var asyncResult = mockMvc.perform(get("/api/download/" + token))
-                .andExpect(request().asyncStarted()).andReturn();
-
-        mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", containsString("application/octet-stream")));
+        mockMvc.perform(get("/api/download/" + token))
+                .andExpect(status().isFound())
+                .andExpect(header().string("Location",
+                        containsString("drive.google.com/uc?export=download")));
     }
 
     @Test
