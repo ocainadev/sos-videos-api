@@ -6,27 +6,31 @@ import com.sosvideos.video.repository.VideoRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.time.LocalDate;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 /**
  * Testes de integração para o fluxo de download baseado em token:
  * <ol>
  *   <li>POST /api/videos/{id}/download/token → gera token (JWT obrigatório)</li>
- *   <li>GET  /api/download/{token}           → valida token e redireciona (302) para Google Drive</li>
+ *   <li>GET  /api/download/{token}           → streaming com application/octet-stream</li>
  * </ol>
- *
- * O GoogleDriveService é mockado pela base — nenhum I/O externo.
- * Vídeos são persistidos diretamente via VideoRepository.
  */
-@DisplayName("Download — geração de token e redirect para Google Drive")
+@DisplayName("Download — geração de token e streaming")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DownloadControllerTest extends AbstractIntegrationTest {
@@ -37,14 +41,12 @@ class DownloadControllerTest extends AbstractIntegrationTest {
     private String adminToken;
     private Long videoId;
 
-    private static final String FAKE_DRIVE_URL =
-            "https://www.googleapis.com/drive/v3/files/drive-file-id-test-123?alt=media&access_token=fake";
+    private static final String FAKE_CONTENT = "fake-video-bytes";
 
     @BeforeAll
     void setup() throws Exception {
         adminToken = loginAndGetToken(adminEmail, adminPassword);
 
-        // Persiste um vídeo de teste diretamente no banco (uma única vez)
         Video video = videoRepository.save(Video.builder()
                 .title("Vídeo de Teste Download")
                 .driveFileId("drive-file-id-test-123")
@@ -56,37 +58,41 @@ class DownloadControllerTest extends AbstractIntegrationTest {
         videoId = video.getId();
     }
 
-    /**
-     * @MockitoBean reseta os mocks após CADA teste.
-     * Reconfigura buildTempDownloadUrl() antes de cada método.
-     */
+    /** @MockitoBean reseta mocks após cada teste — reconfigura aqui. */
     @BeforeEach
     void setupMock() throws Exception {
+        doAnswer(invocation -> {
+            OutputStream out = invocation.getArgument(1);
+            try {
+                out.write(FAKE_CONTENT.getBytes());
+                out.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        }).when(googleDriveService).streamFile(eq("drive-file-id-test-123"), any(OutputStream.class));
+
         when(googleDriveService.buildTempDownloadUrl(anyString()))
-                .thenReturn(FAKE_DRIVE_URL);
+                .thenReturn("https://googleapis.com/fake");
     }
 
     // ── POST /api/videos/{id}/download/token ─────────────────────────────────
 
     @Test
     @Order(1)
-    @DisplayName("Admin gera token para vídeo existente — retorna 200 com token de 32 chars")
+    @DisplayName("Admin gera token — retorna 200 com token de 32 chars")
     void generateToken_comoAdmin_retorna200ComToken() throws Exception {
         String response = mockMvc.perform(post("/api/videos/" + videoId + "/download/token")
                         .header("Authorization", bearer(adminToken))
                         .param("type", "SINGLE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.token").isNotEmpty())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                .andReturn().getResponse().getContentAsString();
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> body = objectMapper.readValue(response, Map.class);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) body.get("data");
-        String token = (String) data.get("token");
-        assertThat(token).hasSize(32); // UUID sem hífens = 32 hex chars
+        Map<String, Object> data = (Map<String, Object>)
+                ((Map<String, Object>) objectMapper.readValue(response, Map.class)).get("data");
+        assertThat((String) data.get("token")).hasSize(32);
     }
 
     @Test
@@ -110,13 +116,21 @@ class DownloadControllerTest extends AbstractIntegrationTest {
 
     @Test
     @Order(4)
-    @DisplayName("Token válido — retorna 302 com Location apontando para o Google Drive")
-    void downloadByToken_tokenValido_retorna302ComLocationDoDrive() throws Exception {
+    @DisplayName("Token válido — retorna 200, application/octet-stream e corpo do arquivo")
+    void downloadByToken_tokenValido_retorna200EStream() throws Exception {
         String token = obtainToken(adminToken, videoId, "SINGLE");
 
-        mockMvc.perform(get("/api/download/" + token))
-                .andExpect(status().isFound())                          // HTTP 302
-                .andExpect(header().string("Location", FAKE_DRIVE_URL)); // redirect para o Drive
+        var asyncResult = mockMvc.perform(get("/api/download/" + token))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        byte[] body = mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", containsString("application/octet-stream")))
+                .andExpect(header().string("Content-Disposition", containsString("attachment")))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(new String(body)).isEqualTo(FAKE_CONTENT);
     }
 
     @Test
@@ -133,55 +147,49 @@ class DownloadControllerTest extends AbstractIntegrationTest {
     void downloadByToken_usoUnico_segundaTentativaRetorna410() throws Exception {
         String token = obtainToken(adminToken, videoId, "SINGLE");
 
-        // Primeira requisição consome o token (302 redirect)
-        mockMvc.perform(get("/api/download/" + token))
-                .andExpect(status().isFound());
+        var asyncResult = mockMvc.perform(get("/api/download/" + token))
+                .andExpect(request().asyncStarted()).andReturn();
+        mockMvc.perform(asyncDispatch(asyncResult)).andExpect(status().isOk());
 
-        // Segunda requisição deve ser rejeitada
         mockMvc.perform(get("/api/download/" + token))
                 .andExpect(status().isGone());
     }
 
     @Test
     @Order(7)
-    @DisplayName("Token BATCH — retorna 302 com Location do Drive")
-    void generateToken_tipoBatch_retorna302() throws Exception {
+    @DisplayName("Token BATCH — retorna 200 com application/octet-stream")
+    void downloadByToken_tipoBatch_retorna200() throws Exception {
         String token = obtainToken(adminToken, videoId, "BATCH");
 
-        mockMvc.perform(get("/api/download/" + token))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", containsString("googleapis.com")));
-    }
+        var asyncResult = mockMvc.perform(get("/api/download/" + token))
+                .andExpect(request().asyncStarted()).andReturn();
 
-    // ── Controle de acesso ────────────────────────────────────────────────────
+        mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", containsString("application/octet-stream")));
+    }
 
     @Test
     @Order(8)
-    @DisplayName("Endpoint público não bloqueia com 401 ou 403 para token inválido")
-    void publicEndpoint_naoBloqueia401ou403_paraTokenInvalido() throws Exception {
-        // Spring Security não deve bloquear o path (é público).
-        // A resposta correta é 410 (lógica de negócio), nunca 401/403.
-        var result = mockMvc.perform(get("/api/download/qualquer-token-aqui"))
-                .andReturn();
+    @DisplayName("Endpoint público não retorna 401 ou 403 para token inválido")
+    void publicEndpoint_naoBloqueia401ou403() throws Exception {
+        var result = mockMvc.perform(get("/api/download/qualquer-token-aqui")).andReturn();
         assertThat(result.getResponse().getStatus()).isNotEqualTo(401);
         assertThat(result.getResponse().getStatus()).isNotEqualTo(403);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helper ────────────────────────────────────────────────────────────────
 
     private String obtainToken(String jwt, Long vidId, String type) throws Exception {
         String response = mockMvc.perform(post("/api/videos/" + vidId + "/download/token")
                         .header("Authorization", bearer(jwt))
                         .param("type", type))
                 .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                .andReturn().getResponse().getContentAsString();
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> body = objectMapper.readValue(response, Map.class);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        Map<String, Object> data = (Map<String, Object>)
+                ((Map<String, Object>) objectMapper.readValue(response, Map.class)).get("data");
         return (String) data.get("token");
     }
 }
