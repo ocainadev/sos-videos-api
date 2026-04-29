@@ -58,10 +58,12 @@ public class GoogleDriveService {
     /**
      * Streams a Drive file content directly to the provided OutputStream.
      * The link is never exposed to the client.
+     * Buffer de 256KB para melhor throughput no streaming.
      */
     public void streamFile(String fileId, OutputStream outputStream) throws IOException {
-        drive.files().get(fileId)
-                .executeMediaAndDownloadTo(outputStream);
+        var buffered = new java.io.BufferedOutputStream(outputStream, 256 * 1024);
+        drive.files().get(fileId).executeMediaAndDownloadTo(buffered);
+        buffered.flush();
     }
 
     /**
