@@ -11,32 +11,36 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 /**
- * Public (no JWT) endpoint that streams a video file for a valid one-time token.
+ * Endpoint público (sem JWT) que redireciona o browser diretamente para o Google Drive.
  *
- * <p>This controller is intentionally unauthenticated. Security relies on the
- * token being short-lived (60 s) and single-use. The token is issued by
- * {@code POST /api/videos/{id}/download/token} which IS JWT-secured.</p>
+ * <h3>Por que redirect e não streaming?</h3>
+ * <p>No modelo anterior (proxy), cada download trafegava pelo caminho:<br>
+ * {@code Mobile → VPS nginx → Spring Boot → Google Drive → Spring Boot → VPS nginx → Mobile}<br>
+ * A VPS virava o gargalo: toda a banda de upload era consumida para repassar os bytes.</p>
  *
- * <p>Why public? The browser must be able to navigate directly to this URL
- * (e.g. via {@code window.location.href} or an anchor click) without any
- * JavaScript fetch — which is the only way to trigger a native file download
- * on mobile browsers without loading the entire file into JS memory.</p>
+ * <p>Com redirect HTTP 302, o browser vai direto para os servidores do Google:<br>
+ * {@code Mobile → VPS (só o token, ~1 KB) → Google Drive CDN → Mobile}<br>
+ * A VPS não trafega nenhum byte de vídeo — a velocidade é a do CDN do Google (50–200 Mbps).</p>
+ *
+ * <h3>Segurança</h3>
+ * <ul>
+ *   <li>O token de download é de uso único, expira em 60 s e é validado aqui antes do redirect.</li>
+ *   <li>O access token do Google (DRIVE_READONLY, ~1 h) fica na URL do redirect — transmitido
+ *       apenas via HTTPS, nunca armazenado.</li>
+ *   <li>O download é registrado no banco ANTES do redirect, garantindo auditoria mesmo que o
+ *       cliente não complete o download.</li>
+ * </ul>
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/download")
 @RequiredArgsConstructor
-@Tag(name = "Downloads", description = "Endpoint público de download por token")
+@Tag(name = "Downloads", description = "Endpoint público de download por token (redirect para Drive)")
 public class PublicDownloadController {
 
     private final DownloadTokenService downloadTokenService;
@@ -46,36 +50,32 @@ public class PublicDownloadController {
     @GetMapping("/{token}")
     @Operation(
             summary = "Download de vídeo via token de uso único",
-            description = "Streams the video file. The token is consumed on first use and expires in 60 s."
+            description = "Valida o token, registra o download e redireciona para URL autenticada do Google Drive. " +
+                    "O browser baixa o arquivo diretamente do CDN do Google, sem passar pela VPS."
     )
-    public ResponseEntity<StreamingResponseBody> downloadByToken(@PathVariable String token) {
+    public ResponseEntity<Void> downloadByToken(@PathVariable String token) {
 
+        // 1. Valida e consome o token (single-use)
         DownloadTokenEntry entry = downloadTokenService.validateAndConsume(token)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.GONE, "Token de download inválido ou expirado."));
 
-        // Validates access again + records the download in the DB
+        // 2. Valida acesso novamente + registra o download no banco
         DownloadPrep prep = downloadService.prepareDownloadById(
                 entry.videoId(), entry.userId(), entry.type());
 
-        StreamingResponseBody body = outputStream -> {
-            log.debug("Streaming video id={} for userId={} via token", entry.videoId(), entry.userId());
-            googleDriveService.streamFile(prep.driveFileId(), outputStream);
-        };
-
-        String encodedName = URLEncoder.encode(prep.title(), StandardCharsets.UTF_8)
-                .replace("+", "%20");
-
-        ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(prep.mimeType()))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename*=UTF-8''" + encodedName)
-                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-
-        if (prep.fileSize() != null && prep.fileSize() > 0) {
-            builder = builder.header(HttpHeaders.CONTENT_LENGTH, String.valueOf(prep.fileSize()));
+        // 3. Gera URL autenticada temporária e redireciona o browser
+        //    O cliente baixa direto do Google Drive — a VPS não trafega bytes de vídeo
+        try {
+            String driveUrl = googleDriveService.buildTempDownloadUrl(prep.driveFileId());
+            log.debug("Redirecting download: videoId={} userId={}", entry.videoId(), entry.userId());
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, driveUrl)
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to build Drive download URL for fileId={}: {}", prep.driveFileId(), e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erro ao gerar URL de download. Tente novamente.");
         }
-
-        return builder.body(body);
     }
 }

@@ -3,12 +3,15 @@ package com.sosvideos.drive.service;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import com.google.auth.oauth2.GoogleCredentials;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,9 +20,11 @@ import java.util.List;
 public class GoogleDriveService {
 
     private final Drive drive;
+    private final GoogleCredentials credentials;
 
-    public GoogleDriveService(@Lazy Drive drive) {
+    public GoogleDriveService(@Lazy Drive drive, @Lazy GoogleCredentials credentials) {
         this.drive = drive;
+        this.credentials = credentials;
     }
 
     private static final int MAX_LIST_FILES = 500;
@@ -56,9 +61,30 @@ public class GoogleDriveService {
     }
 
     /**
+     * Builds a short-lived authenticated URL that the browser can use to download
+     * the file DIRECTLY from Google Drive — bypassing the VPS entirely.
+     *
+     * <p>How it works: the service-account access token (scoped to DRIVE_READONLY,
+     * valid ~1 hour, auto-refreshed) is embedded as a query parameter. The browser
+     * navigates to this URL and downloads from Google's CDN at full speed.</p>
+     *
+     * <p>Security note: the token is transmitted over HTTPS only, is scoped to
+     * read-only, and expires automatically. It is NOT stored anywhere by this service.</p>
+     */
+    public String buildTempDownloadUrl(String fileId) throws IOException {
+        credentials.refreshIfExpired();
+        String accessToken = credentials.getAccessToken().getTokenValue();
+        String encodedToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
+        return "https://www.googleapis.com/drive/v3/files/"
+                + fileId + "?alt=media&access_token=" + encodedToken;
+    }
+
+    /**
      * Streams a Drive file content directly to the provided OutputStream.
      * The link is never exposed to the client.
      * Buffer de 256KB para melhor throughput no streaming.
+     *
+     * <p>Fallback path only — prefer {@link #buildTempDownloadUrl} for browser downloads.</p>
      */
     public void streamFile(String fileId, OutputStream outputStream) throws IOException {
         var buffered = new java.io.BufferedOutputStream(outputStream, 256 * 1024);

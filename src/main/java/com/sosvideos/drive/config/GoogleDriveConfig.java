@@ -30,37 +30,50 @@ public class GoogleDriveConfig {
     private final AppProperties appProperties;
 
     /**
-     * @Lazy: Drive bean only initialized on first use.
-     * This avoids startup failures when credentials are not yet configured.
+     * Exposes the GoogleCredentials as a bean so GoogleDriveService can generate
+     * short-lived authenticated download URLs (for browser redirect downloads).
+     *
+     * @Lazy: only initialised on first use — avoids startup failure if credentials
+     * file is not yet present.
      */
     @Bean
     @Lazy
-    public Drive googleDrive() throws Exception {
+    public GoogleCredentials googleCredentials() throws Exception {
         String credPath = appProperties.getGoogle().getDrive().getCredentialsPath();
-        String appName  = appProperties.getGoogle().getDrive().getApplicationName();
-
-        log.info("Initializing Google Drive client with credentials: {}", credPath);
-
+        log.info("Loading Google credentials from: {}", credPath);
         try (InputStream credStream = openCredentials(credPath)) {
-            GoogleCredentials credentials = GoogleCredentials
+            return GoogleCredentials
                     .fromStream(credStream)
                     .createScoped(List.of(DriveScopes.DRIVE_READONLY));
-
-            // 15s connect + 60s read — prevents thread-pool exhaustion on slow Drive responses
-            HttpCredentialsAdapter credentialsAdapter = new HttpCredentialsAdapter(credentials);
-            HttpRequestInitializer initializer = request -> {
-                credentialsAdapter.initialize(request);
-                request.setConnectTimeout(15_000);
-                request.setReadTimeout(60_000);
-            };
-
-            return new Drive.Builder(
-                    GoogleNetHttpTransport.newTrustedTransport(),
-                    GsonFactory.getDefaultInstance(),
-                    initializer)
-                    .setApplicationName(appName)
-                    .build();
         }
+    }
+
+    /**
+     * @Lazy: Drive bean only initialized on first use.
+     * This avoids startup failures when credentials are not yet configured.
+     *
+     * Read timeout increased to 5 min: the proxy-streaming path needs it for large
+     * files. The redirect path (preferred) doesn't use this at all during the actual
+     * download — but the bean is still used for listing/metadata calls.
+     */
+    @Bean
+    @Lazy
+    public Drive googleDrive(GoogleCredentials googleCredentials) throws Exception {
+        String appName = appProperties.getGoogle().getDrive().getApplicationName();
+
+        HttpCredentialsAdapter credentialsAdapter = new HttpCredentialsAdapter(googleCredentials);
+        HttpRequestInitializer initializer = request -> {
+            credentialsAdapter.initialize(request);
+            request.setConnectTimeout(15_000);
+            request.setReadTimeout(300_000); // 5 min — safe for large-file streaming
+        };
+
+        return new Drive.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                GsonFactory.getDefaultInstance(),
+                initializer)
+                .setApplicationName(appName)
+                .build();
     }
 
     private InputStream openCredentials(String path) throws IOException {
