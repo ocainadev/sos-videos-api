@@ -65,11 +65,16 @@ public class PublicDownloadController {
                 entry.videoId(), entry.userId(), entry.type());
 
         // 3. Redireciona browser direto ao CDN do Google Drive.
-        //    drive.google.com/uc?export=download  → força Content-Disposition: attachment
-        //    confirm=t                             → bypassa a tela de aviso para arquivos > 25 MB
-        //    O arquivo NÃO passa pela VPS — vai direto Google → browser do usuário.
-        String driveUrl = "https://drive.google.com/uc?export=download&confirm=t&id="
-                + prep.driveFileId();
+        //
+        //    drive.usercontent.google.com/download é o endpoint atual do Google para
+        //    downloads de arquivo — substitui o antigo drive.google.com/uc que exibia
+        //    páginas de aviso de vírus para arquivos > 25 MB. Retorna o arquivo com
+        //    Content-Disposition: attachment, fazendo o browser baixar sem navegar
+        //    para fora da página da aplicação (nenhuma aba do Drive é aberta).
+        //
+        //    O arquivo NÃO passa pela VPS — vai direto Google CDN → browser do usuário.
+        String driveUrl = "https://drive.usercontent.google.com/download?id="
+                + prep.driveFileId() + "&export=download&authuser=0";
 
         log.info("Download token OK — redirect videoId={} userId={} → Drive fileId={}",
                 entry.videoId(), entry.userId(), prep.driveFileId());
