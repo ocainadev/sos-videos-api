@@ -18,6 +18,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - sosvideos-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -70,6 +75,14 @@ services:
       - google_tokens:/app/tokens
     networks:
       - sosvideos-net
+    logging:
+      driver: "json-file"
+      options:
+        # 5 arquivos × 50 MB = 250 MB máximo de logs do backend.
+        # Sem esse limite o Docker acumula logs infinitamente em
+        # /var/lib/docker/containers/<id>/<id>-json.log
+        max-size: "50m"
+        max-file: "5"
     deploy:
       resources:
         limits:
@@ -97,6 +110,11 @@ services:
       - sosvideos-net
     ports:
       - "127.0.0.1:8081:80"   # só localhost — Nginx do host expõe para internet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
