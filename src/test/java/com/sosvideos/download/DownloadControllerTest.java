@@ -102,7 +102,7 @@ class DownloadControllerTest extends AbstractIntegrationTest {
                 .andExpect(status().isFound())                                    // 302
                 .andExpect(header().string(
                         "Location",
-                        containsString("drive.google.com/uc?export=download")))   // CDN do Drive
+                        containsString("drive.usercontent.google.com/download"))) // CDN do Drive
                 .andExpect(header().string(
                         "Location",
                         containsString("drive-file-id-test-123")));               // file ID correto
@@ -138,7 +138,7 @@ class DownloadControllerTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/download/" + token))
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location",
-                        containsString("drive.google.com/uc?export=download")));
+                        containsString("drive.usercontent.google.com/download")));
     }
 
     @Test
