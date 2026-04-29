@@ -16,6 +16,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -130,6 +131,14 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error("Valor inválido para o parâmetro '" + ex.getName() + "'."));
+    }
+
+    // ── ResponseStatusException (ex: 410 para token expirado) ────────────────
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
+        String msg = ex.getReason() != null ? ex.getReason() : ex.getMessage();
+        return ResponseEntity.status(ex.getStatusCode()).body(ApiResponse.error(msg));
     }
 
     // ── Fallback ──────────────────────────────────────────────────────────────

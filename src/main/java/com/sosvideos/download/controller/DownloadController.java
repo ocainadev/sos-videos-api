@@ -5,6 +5,7 @@ import com.sosvideos.download.dto.BatchDownloadListResponse;
 import com.sosvideos.download.dto.DownloadPrep;
 import com.sosvideos.download.enums.DownloadType;
 import com.sosvideos.download.service.DownloadService;
+import com.sosvideos.download.service.DownloadTokenService;
 import com.sosvideos.drive.service.GoogleDriveService;
 import com.sosvideos.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +26,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -36,6 +38,7 @@ import java.time.LocalDate;
 public class DownloadController {
 
     private final DownloadService downloadService;
+    private final DownloadTokenService downloadTokenService;
     private final GoogleDriveService googleDriveService;
 
     /**
@@ -79,6 +82,33 @@ public class DownloadController {
         }
 
         return builder.body(body);
+    }
+
+    /**
+     * Issues a single-use, 60-second download token for the given video.
+     *
+     * <p>The client should immediately redirect the browser to
+     * {@code GET /api/download/{token}} — no Authorization header needed there.
+     * This two-step approach lets the browser handle the download natively,
+     * which is the only reliable method on mobile (avoids loading the file
+     * into JS/browser memory).</p>
+     */
+    @PostMapping("/{id}/download/token")
+    @Operation(
+            summary = "Gera token de download de curta duração",
+            description = "Retorna um token de uso único (60 s) para o endpoint público GET /api/download/{token}."
+    )
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateDownloadToken(
+            @PathVariable Long id,
+            @Parameter(description = "Tipo do download: SINGLE (padrão) ou BATCH")
+            @RequestParam(defaultValue = "SINGLE") DownloadType type,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        // Validate access before issuing the token (throws if not allowed)
+        downloadService.validateVideoAccess(id, principal);
+
+        String token = downloadTokenService.generateToken(id, principal.getId(), type);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("token", token)));
     }
 
     /**

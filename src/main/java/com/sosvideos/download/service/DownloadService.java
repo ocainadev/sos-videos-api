@@ -6,6 +6,7 @@ import com.sosvideos.download.dto.DownloadPrep;
 import com.sosvideos.download.entity.Download;
 import com.sosvideos.download.enums.DownloadType;
 import com.sosvideos.download.repository.DownloadRepository;
+import com.sosvideos.exception.ResourceNotFoundException;
 import com.sosvideos.security.UserPrincipal;
 import com.sosvideos.user.entity.User;
 import com.sosvideos.user.repository.UserRepository;
@@ -52,6 +53,28 @@ public class DownloadService {
                 video.getMimeType() != null ? video.getMimeType() : "application/octet-stream",
                 video.getFileSize()
         );
+    }
+
+    /**
+     * Validates that {@code principal} has access to {@code videoId} without recording
+     * a download. Used when issuing a pre-download token.
+     */
+    @Transactional(readOnly = true)
+    public void validateVideoAccess(Long videoId, UserPrincipal principal) {
+        videoService.requireAccessToVideo(videoId, principal);
+    }
+
+    /**
+     * Same as {@link #prepareDownload} but looks up the user by ID instead of requiring
+     * an already-authenticated principal. Used by the public token-based download endpoint,
+     * where the JWT is not available (the token itself authenticates the request).
+     */
+    @Transactional
+    public DownloadPrep prepareDownloadById(Long videoId, Long userId, DownloadType type) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
+        UserPrincipal principal = new UserPrincipal(user);
+        return prepareDownload(videoId, principal, type);
     }
 
     /**

@@ -39,11 +39,11 @@ public abstract class AbstractIntegrationTest {
 
     // Evita chamadas reais ao Google Drive
     @MockitoBean
-    GoogleDriveService googleDriveService;
+    protected GoogleDriveService googleDriveService;
 
     // Evita que o scheduler de limpeza rode durante os testes
     @MockitoBean
-    DriveFolderCleanupScheduler driveFolderCleanupScheduler;
+    protected DriveFolderCleanupScheduler driveFolderCleanupScheduler;
 
     @Value("${app.admin.email}")
     protected String adminEmail;

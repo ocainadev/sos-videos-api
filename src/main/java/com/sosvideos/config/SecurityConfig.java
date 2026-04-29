@@ -40,7 +40,8 @@ public class SecurityConfig {
     private static final String[] PUBLIC_PATHS = {
             "/api/auth/login",
             "/api/webhooks/**",
-            "/actuator/health"
+            "/actuator/health",
+            "/api/download/**"   // one-time token downloads — token itself is the auth
     };
 
     /**
