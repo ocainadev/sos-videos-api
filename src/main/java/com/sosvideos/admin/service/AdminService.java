@@ -109,10 +109,14 @@ public class AdminService {
 
         Page<User> userPage;
         if ("endDate".equalsIgnoreCase(sortBy)) {
-            // Sort by subscription endDate via LEFT JOIN query (NULLS LAST)
-            // direction is always ASC for endDate (soonest expiring first)
+            // Sort by subscription endDate via LEFT JOIN query (NULLS LAST).
+            // Two separate queries because JPQL does not support dynamic ORDER BY direction.
             Pageable pageable = PageRequest.of(page, safeSize);
-            userPage = userRepository.findSubscribersSortedByEndDate(UserRole.SUBSCRIBER, q, includeInactive, pageable);
+            if ("desc".equalsIgnoreCase(sortDir)) {
+                userPage = userRepository.findSubscribersSortedByEndDateDesc(UserRole.SUBSCRIBER, q, includeInactive, pageable);
+            } else {
+                userPage = userRepository.findSubscribersSortedByEndDateAsc(UserRole.SUBSCRIBER, q, includeInactive, pageable);
+            }
         } else {
             // Sort by user fields (name, email, role, createdAt)
             String field = switch (sortBy == null ? "" : sortBy.toLowerCase()) {
