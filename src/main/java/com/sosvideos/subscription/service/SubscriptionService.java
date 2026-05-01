@@ -1,5 +1,7 @@
 package com.sosvideos.subscription.service;
 
+import com.sosvideos.common.AppConstants;
+
 import com.sosvideos.exception.SubscriptionRequiredException;
 import com.sosvideos.subscription.entity.Subscription;
 import com.sosvideos.subscription.enums.SubscriptionStatus;
@@ -23,7 +25,7 @@ public class SubscriptionService {
 
     @Transactional(readOnly = true)
     public Optional<Subscription> findAccessible(Long userId) {
-        return subscriptionRepository.findAccessibleByUserId(userId, ACCESS_STATUSES, LocalDate.now());
+        return subscriptionRepository.findAccessibleByUserId(userId, ACCESS_STATUSES, AppConstants.today());
     }
 
     @Transactional(readOnly = true)
@@ -35,6 +37,6 @@ public class SubscriptionService {
 
     @Transactional(readOnly = true)
     public Optional<Subscription> findActive(Long userId) {
-        return subscriptionRepository.findActiveByUserId(userId, SubscriptionStatus.ACTIVE, LocalDate.now());
+        return subscriptionRepository.findActiveByUserId(userId, SubscriptionStatus.ACTIVE, AppConstants.today());
     }
 }

@@ -112,7 +112,7 @@ public class KiwifyWebhookService {
                 .findTopByUserIdAndStatusOrderByCreatedAtDesc(user.getId(), SubscriptionStatus.PENDING);
         if (pending.isPresent()) {
             Subscription sub = pending.get();
-            LocalDate today = LocalDate.now();
+            LocalDate today = AppConstants.today();
             sub.setKiwifySubscriptionId(kiwifySubId);
             sub.setKiwifyCustomerId(customerData.getId());
             sub.setStatus(SubscriptionStatus.ACTIVE);
@@ -133,8 +133,8 @@ public class KiwifyWebhookService {
         String kiwifySubId = resolveSubscriptionId(payload);
         Subscription sub = findSubscriptionByPayload(payload, kiwifySubId);
         if (sub == null) { log.warn("Renewed event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
-        LocalDate base = (sub.getEndDate() != null && sub.getEndDate().isAfter(LocalDate.now()))
-                ? sub.getEndDate() : LocalDate.now();
+        LocalDate base = (sub.getEndDate() != null && sub.getEndDate().isAfter(AppConstants.today()))
+                ? sub.getEndDate() : AppConstants.today();
         sub.setStatus(SubscriptionStatus.ACTIVE);
         sub.setEndDate(base.plusDays(appProperties.getSubscriptionDurationDays()));
         sub.setLastPaymentDate(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
@@ -158,7 +158,7 @@ public class KiwifyWebhookService {
         Subscription sub = findSubscriptionByPayload(payload, kiwifySubId);
         if (sub == null) { log.warn("Refund event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
         sub.setStatus(SubscriptionStatus.REFUNDED);
-        sub.setEndDate(LocalDate.now().minusDays(1)); // remove access immediately
+        sub.setEndDate(AppConstants.today().minusDays(1)); // remove access immediately
         subscriptionRepository.save(sub);
         log.info("Subscription refunded, access removed for kiwifySubId={}", kiwifySubId);
     }
@@ -219,7 +219,7 @@ public class KiwifyWebhookService {
     }
 
     private void createSubscription(User user, CustomerData customerData, String kiwifySubId) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppConstants.today();
         Subscription sub = Subscription.builder()
                 .user(user)
                 .status(SubscriptionStatus.ACTIVE)
@@ -238,7 +238,7 @@ public class KiwifyWebhookService {
         if (sub.hasAccess()) {
             return; // already active, do nothing on duplicate approved event
         }
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppConstants.today();
         sub.setStatus(SubscriptionStatus.ACTIVE);
         sub.setStartDate(today);
         sub.setEndDate(today.plusDays(appProperties.getSubscriptionDurationDays()));

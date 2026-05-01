@@ -1,5 +1,7 @@
 package com.sosvideos.admin.service;
 
+import com.sosvideos.common.AppConstants;
+
 import com.sosvideos.admin.dto.CreateSubscriberRequest;
 import com.sosvideos.admin.dto.CsvImportResult;
 import com.sosvideos.admin.dto.PageResponse;
@@ -171,7 +173,7 @@ public class AdminService {
         // (a que ficará gravada) for hoje ou anterior — sem ativação antecipada.
         if (request.getStatus() == SubscriptionStatus.ACTIVE) {
             LocalDate effectiveStart = sub.getStartDate(); // já atualizado acima se veio no request
-            if (effectiveStart != null && effectiveStart.isAfter(LocalDate.now())) {
+            if (effectiveStart != null && effectiveStart.isAfter(AppConstants.today())) {
                 throw new BusinessException(
                         "Não é possível ativar uma assinatura com data de início no futuro (" + effectiveStart + ").");
             }

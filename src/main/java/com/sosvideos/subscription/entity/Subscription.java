@@ -1,6 +1,7 @@
 package com.sosvideos.subscription.entity;
 
 import com.sosvideos.common.BaseEntity;
+import com.sosvideos.common.AppConstants;
 import com.sosvideos.subscription.enums.SubscriptionStatus;
 import com.sosvideos.user.entity.User;
 import jakarta.persistence.*;
@@ -50,7 +51,7 @@ public class Subscription extends BaseEntity {
     public boolean isActive() {
         return status == SubscriptionStatus.ACTIVE
                 && endDate != null
-                && !LocalDate.now().isAfter(endDate);
+                && !AppConstants.today().isAfter(endDate);
     }
 
     /**
@@ -61,6 +62,6 @@ public class Subscription extends BaseEntity {
         if (status == SubscriptionStatus.REFUNDED || status == SubscriptionStatus.EXPIRED) {
             return false;
         }
-        return endDate != null && !LocalDate.now().isAfter(endDate);
+        return endDate != null && !AppConstants.today().isAfter(endDate);
     }
 }
