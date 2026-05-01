@@ -41,7 +41,8 @@ public class SecurityConfig {
             "/api/auth/login",
             "/api/webhooks/**",
             "/actuator/health",
-            "/api/download/**"   // one-time token downloads — token itself is the auth
+            "/api/download/**",    // one-time token downloads — token itself is the auth
+            "/api/folder-link/**"  // time-limited folder link redirects — token is the auth
     };
 
     /**
