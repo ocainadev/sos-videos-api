@@ -137,10 +137,23 @@ public class VideoService {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /** Returns the earliest date the subscriber can see: max(today - VISIBILITY_WINDOW, subscriptionStart). */
+    /**
+     * Returns the earliest date the subscriber can see.
+     *
+     * <p>Rule: {@code max(today - VISIBILITY_WINDOW, effectiveStart)}<br>
+     * where {@code effectiveStart} is {@code subscriptionStart - 1 day} when the
+     * subscription began today — granting access to yesterday's content so that
+     * users registered on the same day are not penalised for a missing day.</p>
+     */
     private LocalDate visibleFrom(Subscription sub, LocalDate today) {
         LocalDate windowStart = today.minusDays(AppConstants.VIDEO_VISIBILITY_DAYS - 1);
         LocalDate subscriptionStart = sub.getStartDate() != null ? sub.getStartDate() : today;
+
+        // Subscribers registered today gain access to yesterday's videos as well
+        if (subscriptionStart.equals(today)) {
+            subscriptionStart = today.minusDays(1);
+        }
+
         return subscriptionStart.isAfter(windowStart) ? subscriptionStart : windowStart;
     }
 
