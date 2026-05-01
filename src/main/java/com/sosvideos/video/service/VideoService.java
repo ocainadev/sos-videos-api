@@ -35,7 +35,7 @@ public class VideoService {
 
     @Transactional(readOnly = true)
     public List<VideosByDateResponse> getVisibleVideos(UserPrincipal principal) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppConstants.today();
         LocalDate visibleFrom;
 
         if (principal.bypassesSubscriptionCheck()) {
@@ -82,7 +82,7 @@ public class VideoService {
         if (!principal.bypassesSubscriptionCheck()) {
             Subscription sub = subscriptionService.requireAccess(principal.getId());
             requireTermAccepted(principal.getId());
-            LocalDate visibleFrom = visibleFrom(sub, LocalDate.now());
+            LocalDate visibleFrom = visibleFrom(sub, AppConstants.today());
             if (video.getPublishDate().isBefore(visibleFrom)) {
                 throw new com.sosvideos.exception.BusinessException("Vídeo fora do período de acesso.");
             }
@@ -98,7 +98,7 @@ public class VideoService {
         }
         Subscription sub = subscriptionService.requireAccess(principal.getId());
         requireTermAccepted(principal.getId());
-        return videoRepository.findVisibleByDate(date, visibleFrom(sub, LocalDate.now()));
+        return videoRepository.findVisibleByDate(date, visibleFrom(sub, AppConstants.today()));
     }
 
     @Transactional

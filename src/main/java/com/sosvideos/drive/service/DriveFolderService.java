@@ -40,7 +40,7 @@ public class DriveFolderService {
     @Transactional
     public DriveFolderResponse register(DriveFolderRequest request) {
         // minAllowed = today - 7 (e.g. today=27 → 20). Dates 19 and before are rejected.
-        LocalDate minAllowed = LocalDate.now().minusDays(AppConstants.FOLDER_EXPIRY_DAYS);
+        LocalDate minAllowed = AppConstants.today().minusDays(AppConstants.FOLDER_EXPIRY_DAYS);
         if (request.getPublishDate().isBefore(minAllowed)) {
             throw new BusinessException(
                     "Não é possível cadastrar pasta para uma data anterior a " + minAllowed
@@ -186,7 +186,7 @@ public class DriveFolderService {
     @Transactional
     public int deleteExpired() {
         // cutoff = today - 7 (e.g. today=27 → 20). Query: publishDate < 20 → day 19 and before deleted.
-        LocalDate cutoff = LocalDate.now().minusDays(AppConstants.FOLDER_EXPIRY_DAYS);
+        LocalDate cutoff = AppConstants.today().minusDays(AppConstants.FOLDER_EXPIRY_DAYS);
         List<DriveFolder> expired = driveFolderRepository.findExpired(cutoff);
 
         if (expired.isEmpty()) {

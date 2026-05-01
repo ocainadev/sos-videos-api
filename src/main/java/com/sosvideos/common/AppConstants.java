@@ -1,8 +1,19 @@
 package com.sosvideos.common;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 public final class AppConstants {
 
     private AppConstants() {}
+
+    /** Timezone oficial do negócio — sempre São Paulo, independente do servidor. */
+    public static final ZoneId ZONE = ZoneId.of("America/Sao_Paulo");
+
+    /** Retorna a data atual no timezone de São Paulo. Use em vez de {@code LocalDate.now()}. */
+    public static LocalDate today() {
+        return LocalDate.now(ZONE);
+    }
 
     public static final int VIDEO_VISIBILITY_DAYS = 7;
 

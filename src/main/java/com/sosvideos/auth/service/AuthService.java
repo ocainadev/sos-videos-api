@@ -1,5 +1,7 @@
 package com.sosvideos.auth.service;
 
+import com.sosvideos.common.AppConstants;
+
 import com.sosvideos.auth.dto.ChangePasswordRequest;
 import com.sosvideos.auth.dto.LoginRequest;
 import com.sosvideos.auth.dto.LoginResponse;
@@ -47,7 +49,7 @@ public class AuthService {
         String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
 
         Optional<Subscription> sub = subscriptionRepository
-                .findActiveByUserId(user.getId(), SubscriptionStatus.ACTIVE, LocalDate.now());
+                .findActiveByUserId(user.getId(), SubscriptionStatus.ACTIVE, AppConstants.today());
 
         boolean hasAcceptedTerm = termAcceptanceRepository
                 .findActiveTermAcceptanceByUserId(user.getId()).isPresent();
@@ -90,7 +92,7 @@ public class AuthService {
         Optional<Subscription> sub = subscriptionRepository
                 .findAccessibleByUserId(user.getId(),
                         List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.CANCELED),
-                        LocalDate.now());
+                        AppConstants.today());
 
         boolean hasAcceptedTerm = termAcceptanceRepository
                 .findActiveTermAcceptanceByUserId(user.getId()).isPresent();
