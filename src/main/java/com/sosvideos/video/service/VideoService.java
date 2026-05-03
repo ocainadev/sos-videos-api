@@ -147,7 +147,7 @@ public class VideoService {
     private LocalDate visibleFrom(Subscription sub, LocalDate today) {
         LocalDate windowStart = today.minusDays(AppConstants.VIDEO_VISIBILITY_DAYS - 1);
         LocalDate subscriptionStart = sub.getStartDate() != null ? sub.getStartDate() : today;
-        LocalDate effectiveStart = subscriptionStart.minusDays(1);
+        LocalDate effectiveStart = subscriptionStart.minusDays(2);
         return effectiveStart.isAfter(windowStart) ? effectiveStart : windowStart;
     }
 
