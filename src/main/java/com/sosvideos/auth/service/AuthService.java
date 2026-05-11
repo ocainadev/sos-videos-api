@@ -49,7 +49,8 @@ public class AuthService {
         String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
 
         Optional<Subscription> sub = subscriptionRepository
-                .findActiveByUserId(user.getId(), SubscriptionStatus.ACTIVE, AppConstants.today());
+                .findActiveByUserId(user.getId(), SubscriptionStatus.ACTIVE, AppConstants.today())
+                .stream().findFirst();
 
         boolean hasAcceptedTerm = termAcceptanceRepository
                 .findActiveTermAcceptanceByUserId(user.getId()).isPresent();
@@ -92,7 +93,8 @@ public class AuthService {
         Optional<Subscription> sub = subscriptionRepository
                 .findAccessibleByUserId(user.getId(),
                         List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.CANCELED),
-                        AppConstants.today());
+                        AppConstants.today())
+                .stream().findFirst();
 
         boolean hasAcceptedTerm = termAcceptanceRepository
                 .findActiveTermAcceptanceByUserId(user.getId()).isPresent();

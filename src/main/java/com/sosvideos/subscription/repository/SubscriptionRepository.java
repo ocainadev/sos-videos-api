@@ -25,9 +25,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
               AND s.endDate >= :today
             ORDER BY s.endDate DESC
             """)
-    Optional<Subscription> findActiveByUserId(@Param("userId") Long userId,
-                                              @Param("status") SubscriptionStatus status,
-                                              @Param("today") LocalDate today);
+    List<Subscription> findActiveByUserId(@Param("userId") Long userId,
+                                          @Param("status") SubscriptionStatus status,
+                                          @Param("today") LocalDate today);
 
     boolean existsByKiwifySubscriptionId(String kiwifySubscriptionId);
 
@@ -40,9 +40,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
               AND s.endDate >= :today
             ORDER BY s.endDate DESC
             """)
-    Optional<Subscription> findAccessibleByUserId(@Param("userId") Long userId,
-                                                   @Param("statuses") Collection<SubscriptionStatus> statuses,
-                                                   @Param("today") LocalDate today);
+    List<Subscription> findAccessibleByUserId(@Param("userId") Long userId,
+                                              @Param("statuses") Collection<SubscriptionStatus> statuses,
+                                              @Param("today") LocalDate today);
 
     List<Subscription> findByStatusAndEndDateBefore(SubscriptionStatus status, LocalDate date);
 
