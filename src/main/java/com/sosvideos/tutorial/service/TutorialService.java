@@ -1,14 +1,13 @@
 package com.sosvideos.tutorial.service;
 
+import com.sosvideos.common.StatusRequest;
 import com.sosvideos.exception.ResourceNotFoundException;
-import com.sosvideos.exception.SubscriptionRequiredException;
 import com.sosvideos.exception.TermNotAcceptedException;
 import com.sosvideos.security.UserPrincipal;
 import com.sosvideos.subscription.service.SubscriptionService;
 import com.sosvideos.terms.repository.TermAcceptanceRepository;
 import com.sosvideos.tutorial.dto.TutorialRequest;
 import com.sosvideos.tutorial.dto.TutorialResponse;
-import com.sosvideos.tutorial.dto.TutorialStatusRequest;
 import com.sosvideos.tutorial.entity.Tutorial;
 import com.sosvideos.tutorial.repository.TutorialRepository;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +83,7 @@ public class TutorialService {
     }
 
     @Transactional
-    public void toggleStatus(Long id, TutorialStatusRequest request) {
+    public void toggleStatus(Long id, StatusRequest request) {
         Tutorial tutorial = tutorialRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tutorial", id));
         tutorial.setActive(request.getActive());
@@ -118,7 +117,7 @@ public class TutorialService {
                 t.getContentType().name(),
                 t.getUrl(),
                 t.getThumbnailUrl(),
-                t.getActive(),
+                Boolean.TRUE.equals(t.getActive()),
                 t.getSortOrder(),
                 t.getCreatedAt()
         );

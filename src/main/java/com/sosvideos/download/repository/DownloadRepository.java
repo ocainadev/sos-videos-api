@@ -10,13 +10,9 @@ import java.util.Set;
 
 public interface DownloadRepository extends JpaRepository<Download, Long> {
 
-    boolean existsByUserIdAndVideoId(Long userId, Long videoId);
-
     @Query("SELECT d.video.id FROM Download d WHERE d.user.id = :userId AND d.video.id IN :videoIds")
     Set<Long> findDownloadedVideoIds(@Param("userId") Long userId,
                                      @Param("videoIds") List<Long> videoIds);
-
-    List<Download> findByUserId(Long userId);
 
     void deleteByVideoId(Long videoId);
 }

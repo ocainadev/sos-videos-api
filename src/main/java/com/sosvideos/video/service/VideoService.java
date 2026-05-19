@@ -1,6 +1,7 @@
 package com.sosvideos.video.service;
 
 import com.sosvideos.common.AppConstants;
+import com.sosvideos.common.StatusRequest;
 import com.sosvideos.download.repository.DownloadRepository;
 import com.sosvideos.exception.ResourceNotFoundException;
 import com.sosvideos.exception.TermNotAcceptedException;
@@ -9,7 +10,6 @@ import com.sosvideos.subscription.entity.Subscription;
 import com.sosvideos.subscription.service.SubscriptionService;
 import com.sosvideos.terms.repository.TermAcceptanceRepository;
 import com.sosvideos.video.dto.VideoResponse;
-import com.sosvideos.video.dto.VideoStatusRequest;
 import com.sosvideos.video.dto.VideosByDateResponse;
 import com.sosvideos.video.entity.Video;
 import com.sosvideos.video.repository.VideoRepository;
@@ -75,7 +75,7 @@ public class VideoService {
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vídeo", videoId));
 
-        if (!video.getActive()) {
+        if (!Boolean.TRUE.equals(video.getActive())) {
             throw new ResourceNotFoundException("Vídeo", videoId);
         }
 
@@ -102,7 +102,7 @@ public class VideoService {
     }
 
     @Transactional
-    public void toggleStatus(Long videoId, VideoStatusRequest request) {
+    public void toggleStatus(Long videoId, StatusRequest request) {
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vídeo", videoId));
         video.setActive(request.getActive());

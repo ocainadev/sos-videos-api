@@ -22,7 +22,6 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -80,7 +79,7 @@ public class DriveFolderService {
 
         if (driveFiles.isEmpty()) {
             folder.setSyncStatus(SyncStatus.SYNCED);
-            folder.setLastSyncedAt(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
+            folder.setLastSyncedAt(LocalDateTime.now(AppConstants.ZONE));
             driveFolderRepository.save(folder);
             throw new BusinessException("A pasta está vazia no Google Drive — nenhum vídeo foi encontrado.");
         }
@@ -96,7 +95,7 @@ public class DriveFolderService {
         }
 
         folder.setSyncStatus(SyncStatus.SYNCED);
-        folder.setLastSyncedAt(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
+        folder.setLastSyncedAt(LocalDateTime.now(AppConstants.ZONE));
         log.info("Sync completed for folder id={}: {} files", folderId, count.get());
 
         return toResponse(driveFolderRepository.save(folder), count.get());

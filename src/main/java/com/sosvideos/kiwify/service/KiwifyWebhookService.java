@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
 
 @Slf4j
@@ -137,7 +136,7 @@ public class KiwifyWebhookService {
                 ? sub.getEndDate() : AppConstants.today();
         sub.setStatus(SubscriptionStatus.ACTIVE);
         sub.setEndDate(base.plusDays(appProperties.getSubscriptionDurationDays()));
-        sub.setLastPaymentDate(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
+        sub.setLastPaymentDate(LocalDateTime.now(AppConstants.ZONE));
         sub.setNextDueDate(base.plusDays(appProperties.getSubscriptionDurationDays()));
         subscriptionRepository.save(sub);
         log.info("Subscription renewed for kiwifySubId={}, new endDate={}", kiwifySubId, sub.getEndDate());

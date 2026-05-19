@@ -5,9 +5,9 @@ import com.sosvideos.admin.dto.CsvImportResult;
 import com.sosvideos.admin.dto.PageResponse;
 import com.sosvideos.admin.dto.SubscriberSummaryResponse;
 import com.sosvideos.admin.dto.SubscriptionAdjustRequest;
-import com.sosvideos.admin.dto.UserStatusRequest;
 import com.sosvideos.admin.service.AdminService;
 import com.sosvideos.common.ApiResponse;
+import com.sosvideos.common.StatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -65,7 +65,7 @@ public class AdminController {
     @Operation(summary = "Ativa ou desativa um usuário assinante")
     public ResponseEntity<ApiResponse<Void>> toggleUserStatus(
             @PathVariable Long id,
-            @Valid @RequestBody UserStatusRequest request) {
+            @Valid @RequestBody StatusRequest request) {
         adminService.toggleUserStatus(id, request);
         return ResponseEntity.ok(ApiResponse.ok("Status do usuário atualizado."));
     }
