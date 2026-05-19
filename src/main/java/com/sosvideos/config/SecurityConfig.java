@@ -1,6 +1,5 @@
 package com.sosvideos.config;
 
-import com.sosvideos.config.AppProperties;
 import com.sosvideos.security.JwtAuthenticationFilter;
 import com.sosvideos.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;

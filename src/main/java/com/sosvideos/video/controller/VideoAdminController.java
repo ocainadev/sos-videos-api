@@ -1,8 +1,8 @@
 package com.sosvideos.video.controller;
 
 import com.sosvideos.common.ApiResponse;
+import com.sosvideos.common.StatusRequest;
 import com.sosvideos.video.dto.VideoResponse;
-import com.sosvideos.video.dto.VideoStatusRequest;
 import com.sosvideos.video.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,7 +35,7 @@ public class VideoAdminController {
     @Operation(summary = "Ativa ou desativa um vídeo")
     public ResponseEntity<ApiResponse<Void>> toggleStatus(
             @PathVariable Long id,
-            @Valid @RequestBody VideoStatusRequest request) {
+            @Valid @RequestBody StatusRequest request) {
         videoService.toggleStatus(id, request);
         return ResponseEntity.ok(ApiResponse.ok("Status do vídeo atualizado."));
     }

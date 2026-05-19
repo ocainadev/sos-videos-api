@@ -36,6 +36,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Downloads", description = "Link temporário para pasta do Drive")
 public class FolderLinkController {
@@ -45,7 +46,7 @@ public class FolderLinkController {
 
     // ── POST /api/videos/date/{date}/folder-link ─────────────────────────────────
 
-    @PostMapping("/api/videos/date/{date}/folder-link")
+    @PostMapping("/videos/date/{date}/folder-link")
     @PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN', 'SUPPORT')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
@@ -73,7 +74,7 @@ public class FolderLinkController {
 
     // ── GET /api/folder-link/{token} ─────────────────────────────────────────────
 
-    @GetMapping("/api/folder-link/{token}")
+    @GetMapping("/folder-link/{token}")
     @Operation(
             summary = "Redireciona para pasta do Drive via token temporário",
             description = "Endpoint público. Valida o token (5 min, multi-uso) e " +

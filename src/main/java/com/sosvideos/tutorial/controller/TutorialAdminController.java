@@ -1,9 +1,9 @@
 package com.sosvideos.tutorial.controller;
 
 import com.sosvideos.common.ApiResponse;
+import com.sosvideos.common.StatusRequest;
 import com.sosvideos.tutorial.dto.TutorialRequest;
 import com.sosvideos.tutorial.dto.TutorialResponse;
-import com.sosvideos.tutorial.dto.TutorialStatusRequest;
 import com.sosvideos.tutorial.service.TutorialService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -47,7 +47,7 @@ public class TutorialAdminController {
     @Operation(summary = "Ativa ou desativa um tutorial")
     public ResponseEntity<ApiResponse<Void>> toggleStatus(
             @PathVariable Long id,
-            @Valid @RequestBody TutorialStatusRequest request) {
+            @Valid @RequestBody StatusRequest request) {
         tutorialService.toggleStatus(id, request);
         return ResponseEntity.ok(ApiResponse.ok("Status do tutorial atualizado."));
     }

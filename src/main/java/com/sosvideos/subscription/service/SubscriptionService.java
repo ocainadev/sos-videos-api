@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,10 +38,4 @@ public class SubscriptionService {
                         "Sua assinatura está inativa ou expirada. Renove para continuar."));
     }
 
-    @Transactional(readOnly = true)
-    public Optional<Subscription> findActive(Long userId) {
-        return subscriptionRepository
-                .findActiveByUserId(userId, SubscriptionStatus.ACTIVE, AppConstants.today())
-                .stream().findFirst();
-    }
 }

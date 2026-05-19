@@ -7,7 +7,7 @@ import com.sosvideos.admin.dto.CsvImportResult;
 import com.sosvideos.admin.dto.PageResponse;
 import com.sosvideos.admin.dto.SubscriberSummaryResponse;
 import com.sosvideos.admin.dto.SubscriptionAdjustRequest;
-import com.sosvideos.admin.dto.UserStatusRequest;
+import com.sosvideos.common.StatusRequest;
 import com.sosvideos.exception.BusinessException;
 import com.sosvideos.exception.ResourceNotFoundException;
 import com.sosvideos.subscription.entity.Subscription;
@@ -149,7 +149,7 @@ public class AdminService {
     }
 
     @Transactional
-    public void toggleUserStatus(Long userId, UserStatusRequest request) {
+    public void toggleUserStatus(Long userId, StatusRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
         user.setActive(request.getActive());
