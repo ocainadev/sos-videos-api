@@ -12,10 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Roda diariamente e marca como EXPIRED todas as assinaturas ACTIVE
- * cuja data de validade já passou.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -23,7 +19,6 @@ public class SubscriptionExpirationScheduler {
 
     private final SubscriptionRepository subscriptionRepository;
 
-    // Roda todo dia à meia-noite horário de São Paulo
     @Scheduled(cron = "0 0 0 * * *", zone = "America/Sao_Paulo")
     @Transactional
     public void expireSubscriptions() {

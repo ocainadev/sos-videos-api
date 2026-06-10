@@ -26,7 +26,7 @@ public class TutorialService {
     private final SubscriptionService subscriptionService;
     private final TermAcceptanceRepository termAcceptanceRepository;
 
-    // ── Subscriber ────────────────────────────────────────────────────────────
+    // ── Subscriber
 
     @Transactional(readOnly = true)
     public List<TutorialResponse> listActiveForSubscriber(UserPrincipal principal) {
@@ -44,7 +44,7 @@ public class TutorialService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tutorial", id));
     }
 
-    // ── Admin ─────────────────────────────────────────────────────────────────
+    // ── Admin
 
     @Transactional
     public TutorialResponse create(TutorialRequest request) {
@@ -100,7 +100,7 @@ public class TutorialService {
                 .toList();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers
 
     private void requireFullAccess(UserPrincipal principal) {
         if (principal.bypassesSubscriptionCheck()) return;

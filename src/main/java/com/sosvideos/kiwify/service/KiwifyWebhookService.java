@@ -68,8 +68,6 @@ public class KiwifyWebhookService {
         webhookEventRepository.save(event);
     }
 
-    // ── Dispatch ──────────────────────────────────────────────────────────────
-
     private void dispatch(KiwifyWebhookPayload payload) {
         String type = payload.getWebhookEventType();
         switch (type) {
@@ -90,23 +88,17 @@ public class KiwifyWebhookService {
         }
     }
 
-    // ── Handlers ─────────────────────────────────────────────────────────────
-
     private void handleApproved(KiwifyWebhookPayload payload) {
         CustomerData customerData = requireCustomer(payload);
         User user = findOrCreateUser(customerData);
 
         String kiwifySubId = resolveSubscriptionId(payload);
 
-        // 1. Já existe assinatura com esse ID kiwify → ativa/estende
         Optional<Subscription> byKiwifyId = subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId);
         if (byKiwifyId.isPresent()) {
             activateOrExtend(byKiwifyId.get());
             return;
         }
-
-        // 2. Usuário criado manualmente tem assinatura PENDING sem kiwifySubscriptionId
-        //    → aproveita ela em vez de criar uma segunda
         Optional<Subscription> pending = subscriptionRepository
                 .findTopByUserIdAndStatusOrderByCreatedAtDesc(user.getId(), SubscriptionStatus.PENDING);
         if (pending.isPresent()) {
@@ -124,7 +116,6 @@ public class KiwifyWebhookService {
             return;
         }
 
-        // 3. Nenhuma assinatura prévia → cria nova
         createSubscription(user, customerData, kiwifySubId);
     }
 
@@ -148,7 +139,6 @@ public class KiwifyWebhookService {
         if (sub == null) { log.warn("Canceled event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
         sub.setStatus(SubscriptionStatus.CANCELED);
         subscriptionRepository.save(sub);
-        // endDate is NOT changed — user retains access until the end of the paid period
         log.info("Subscription canceled for kiwifySubId={}, access until={}", kiwifySubId, sub.getEndDate());
     }
 
@@ -157,7 +147,7 @@ public class KiwifyWebhookService {
         Subscription sub = findSubscriptionByPayload(payload, kiwifySubId);
         if (sub == null) { log.warn("Refund event: subscription not found for kiwifySubId={}", kiwifySubId); return; }
         sub.setStatus(SubscriptionStatus.REFUNDED);
-        sub.setEndDate(AppConstants.today().minusDays(1)); // remove access immediately
+        sub.setEndDate(AppConstants.today().minusDays(1));
         subscriptionRepository.save(sub);
         log.info("Subscription refunded, access removed for kiwifySubId={}", kiwifySubId);
     }
@@ -171,16 +161,10 @@ public class KiwifyWebhookService {
         log.info("Subscription expired (overdue) for kiwifySubId={}", kiwifySubId);
     }
 
-    /**
-     * Busca a assinatura pelo kiwifySubscriptionId.
-     * Se não encontrar (ex: usuário criado manualmente ou via CSV sem esse campo),
-     * cai no fallback por e-mail do cliente e vincula o kiwifySubscriptionId.
-     */
     private Subscription findSubscriptionByPayload(KiwifyWebhookPayload payload, String kiwifySubId) {
         Optional<Subscription> byId = subscriptionRepository.findByKiwifySubscriptionId(kiwifySubId);
         if (byId.isPresent()) return byId.get();
 
-        // Fallback: busca pelo e-mail do cliente
         if (payload.getCustomer() == null || payload.getCustomer().getEmail() == null) return null;
         Optional<User> user = userRepository.findByEmail(payload.getCustomer().getEmail());
         if (user.isEmpty()) return null;
@@ -188,15 +172,12 @@ public class KiwifyWebhookService {
         Optional<Subscription> latest = subscriptionRepository.findTopByUserIdOrderByCreatedAtDesc(user.get().getId());
         if (latest.isEmpty()) return null;
 
-        // Vincula o kiwifySubscriptionId para próximos eventos
         Subscription sub = latest.get();
         sub.setKiwifySubscriptionId(kiwifySubId);
         if (payload.getCustomer().getId() != null) sub.setKiwifyCustomerId(payload.getCustomer().getId());
         log.info("Subscription linked via email fallback: userId={} kiwifySubId={}", user.get().getId(), kiwifySubId);
         return sub;
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private User findOrCreateUser(CustomerData customerData) {
         return userRepository.findByEmail(customerData.getEmail())
@@ -235,7 +216,7 @@ public class KiwifyWebhookService {
 
     private void activateOrExtend(Subscription sub) {
         if (sub.hasAccess()) {
-            return; // already active, do nothing on duplicate approved event
+            return;
         }
         LocalDate today = AppConstants.today();
         sub.setStatus(SubscriptionStatus.ACTIVE);

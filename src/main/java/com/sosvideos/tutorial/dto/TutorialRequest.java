@@ -22,10 +22,6 @@ public class TutorialRequest {
     @NotNull(message = "Tipo de conteúdo é obrigatório")
     private TutorialContentType contentType;
 
-    /**
-     * URL do tutorial — aceita apenas https:// ou http:// para evitar
-     * javascript: URIs e outros esquemas maliciosos.
-     */
     @Pattern(regexp = "^https?://[^\\s]{3,2000}$",
              message = "URL inválida — deve começar com http:// ou https://")
     private String url;

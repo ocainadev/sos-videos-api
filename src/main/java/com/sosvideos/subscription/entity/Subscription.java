@@ -45,19 +45,12 @@ public class Subscription extends BaseEntity {
     @Column(length = 255)
     private String kiwifyCustomerId;
 
-    /**
-     * Subscription is "active" when status=ACTIVE and within the paid period.
-     */
     public boolean isActive() {
         return status == SubscriptionStatus.ACTIVE
                 && endDate != null
                 && !AppConstants.today().isAfter(endDate);
     }
 
-    /**
-     * User has access when status is ACTIVE or CANCELED and endDate has not passed.
-     * Refund and expiry remove access immediately.
-     */
     public boolean hasAccess() {
         if (status == SubscriptionStatus.REFUNDED || status == SubscriptionStatus.EXPIRED) {
             return false;

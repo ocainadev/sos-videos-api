@@ -41,12 +41,6 @@ public class DownloadController {
     private final DownloadTokenService downloadTokenService;
     private final GoogleDriveService googleDriveService;
 
-    /**
-     * Streams a single video file directly from Google Drive.
-     * The Drive file ID is never exposed to the client.
-     *
-     * @param type SINGLE (default) or BATCH when called as part of a chained download session.
-     */
     @GetMapping("/{id}/download")
     @Operation(
             summary = "Download individual de um vídeo",
@@ -58,10 +52,10 @@ public class DownloadController {
             @RequestParam(defaultValue = "SINGLE") DownloadType type,
             @AuthenticationPrincipal UserPrincipal principal) {
 
-        // 1. Validate access + record download (committed before streaming)
+        // 1. Validate access + record download
         DownloadPrep prep = downloadService.prepareDownload(id, principal, type);
 
-        // 2. Build streaming body — Drive link never leaves the server
+        // 2. Build streaming body
         StreamingResponseBody body = outputStream -> {
             log.debug("Streaming video id={} for userId={}", id, principal.getId());
             googleDriveService.streamFile(prep.driveFileId(), outputStream);
@@ -84,15 +78,6 @@ public class DownloadController {
         return builder.body(body);
     }
 
-    /**
-     * Issues a single-use, 60-second download token for the given video.
-     *
-     * <p>The client should immediately redirect the browser to
-     * {@code GET /api/download/{token}} — no Authorization header needed there.
-     * This two-step approach lets the browser handle the download natively,
-     * which is the only reliable method on mobile (avoids loading the file
-     * into JS/browser memory).</p>
-     */
     @PostMapping("/{id}/download/token")
     @Operation(
             summary = "Gera token de download de curta duração",
@@ -111,11 +96,6 @@ public class DownloadController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("token", token)));
     }
 
-    /**
-     * Returns the ordered list of videos for a given date.
-     * The frontend uses this list to chain individual download calls sequentially:
-     * for each item, call GET /api/videos/{id}/download?type=BATCH
-     */
     @GetMapping("/date/{date}/download-all")
     @Operation(
             summary = "Lista vídeos de uma data para download encadeado",

@@ -1,12 +1,12 @@
 package com.sosvideos.config;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-@Getter
-@Setter
+import static com.sosvideos.common.AppConstants.SUBSCRIPTION_EXPIRES;
+
+@Data
 @Configuration
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
@@ -16,22 +16,19 @@ public class AppProperties {
     private Admin admin = new Admin();
     private Kiwify kiwify = new Kiwify();
     private String corsAllowedOrigins = "http://localhost:5500,http://127.0.0.1:5500";
-    private int subscriptionDurationDays = 30;
+    private int subscriptionDurationDays = SUBSCRIPTION_EXPIRES;
 
-    @Getter
-    @Setter
+    @Data
     public static class Jwt {
         private String secret;
         private long expirationMs;
     }
 
-    @Getter
-    @Setter
+    @Data
     public static class Google {
         private Drive drive = new Drive();
 
-        @Getter
-        @Setter
+        @Data
         public static class Drive {
             private String credentialsPath;
             private String applicationName;
@@ -39,15 +36,13 @@ public class AppProperties {
         }
     }
 
-    @Getter
-    @Setter
+    @Data
     public static class Admin {
         private String email;
         private String password;
     }
 
-    @Getter
-    @Setter
+    @Data
     public static class Kiwify {
         private String webhookSecret;
     }
