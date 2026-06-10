@@ -41,18 +41,16 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
-        condition: service_healthy   # espera o banco estar pronto de verdade
+        condition: service_healthy
     environment:
-      # Banco — nomes exatos que application.properties espera
       DB_URL:      jdbc:postgresql://postgres:5432/${DB_NAME}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
 
-      # JWT
       JWT_SECRET:        ${JWT_SECRET}
       JWT_EXPIRATION:    ${JWT_EXPIRATION}
 
-      # Google Drive — o arquivo é montado em /app/credentials.json
+      # Google Drive
       G_CREDENTIALS: /app/credentials.json
       G_TOKEN:       /app/tokens
 
@@ -63,31 +61,24 @@ services:
       # Kiwify
       KIWIFY_WEBHOOK_SECRET: ${KIWIFY_WEBHOOK_SECRET}
 
-      # CORS — domínio de produção
+      # CORS
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
 
       # Swagger fechado em produção
       APP_SWAGGER_PUBLIC: "false"
     volumes:
-      # Monta o credentials.json do Google como arquivo somente-leitura
       - ./credentials.json:/app/credentials.json:ro
-      # Diretório para tokens OAuth (se necessário)
       - google_tokens:/app/tokens
     networks:
       - sosvideos-net
     logging:
       driver: "json-file"
       options:
-        # 5 arquivos × 50 MB = 250 MB máximo de logs do backend.
-        # Sem esse limite o Docker acumula logs infinitamente em
-        # /var/lib/docker/containers/<id>/<id>-json.log
         max-size: "50m"
         max-file: "5"
     deploy:
       resources:
         limits:
-          # Heap 512m + direct 128m + metaspace/code ~300m + overhead ≈ 1 GB.
-          # Limite de 1.2g dá margem sem desperdiçar RAM da VPS.
           memory: 1200m
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
@@ -95,7 +86,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    # Sem "ports:" — só o frontend acessa via rede Docker interna
 
   # ── Frontend Nginx ────────────────────────────────────────────────────────────
   frontend:
@@ -109,7 +99,7 @@ services:
     networks:
       - sosvideos-net
     ports:
-      - "127.0.0.1:8081:80"   # só localhost — Nginx do host expõe para internet
+      - "127.0.0.1:8081:80"
     logging:
       driver: "json-file"
       options:
@@ -118,7 +108,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128m   # nginx estático: 50–80 MB é mais que suficiente
+          memory: 128m
 
 volumes:
   postgres_data:

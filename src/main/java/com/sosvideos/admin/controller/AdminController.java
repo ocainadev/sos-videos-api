@@ -31,7 +31,7 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    // ── Subscribers ───────────────────────────────────────────────────────────
+    // ── Subscribers
 
     @PostMapping("/subscribers")
     @Operation(summary = "Cria um novo assinante manualmente")
@@ -46,7 +46,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<PageResponse<SubscriberSummaryResponse>>> listSubscribers(
             @Parameter(description = "Busca por nome ou email")           @RequestParam(required = false)       String search,
             @Parameter(description = "Inclui inativos na lista")          @RequestParam(defaultValue = "false") boolean includeInactive,
-            @Parameter(description = "Página (0-based)")                  @RequestParam(defaultValue = "0")     int page,
+            @Parameter(description = "Página")                  @RequestParam(defaultValue = "0")     int page,
             @Parameter(description = "Tamanho da página")                 @RequestParam(defaultValue = "20")    int size,
             @Parameter(description = "Campo de ordenação (endDate, name, email)") @RequestParam(defaultValue = "endDate") String sort,
             @Parameter(description = "Direção (asc, desc)")               @RequestParam(defaultValue = "asc")   String dir) {
@@ -81,7 +81,7 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(msg, result));
     }
 
-    // ── Subscriptions ─────────────────────────────────────────────────────────
+    // ── Subscriptions
 
     @PatchMapping("/subscriptions/{id}")
     @Operation(

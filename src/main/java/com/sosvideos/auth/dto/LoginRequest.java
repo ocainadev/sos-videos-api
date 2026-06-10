@@ -16,7 +16,6 @@ public class LoginRequest {
     private String email;
 
     @NotBlank(message = "Senha é obrigatória")
-    // Limita a 128 chars para prevenir DoS via bcrypt (que processa qualquer tamanho antes de truncar)
     @Size(max = 128, message = "Senha muito longa")
     private String password;
 }

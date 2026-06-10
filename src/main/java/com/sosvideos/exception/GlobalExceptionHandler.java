@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ── Business / Domain ─────────────────────────────────────────────────────
+    // ── Business / Domain
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage()));
     }
 
-    // ── Security ──────────────────────────────────────────────────────────────
+    // ── Security
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Acesso negado."));
     }
 
-    // ── Validation ────────────────────────────────────────────────────────────
+    // ── Validation
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleBeanValidation(
@@ -133,7 +133,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Valor inválido para o parâmetro '" + ex.getName() + "'."));
     }
 
-    // ── ResponseStatusException (ex: 410 para token expirado) ────────────────
+    // ── ResponseStatusException
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
@@ -141,7 +141,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatusCode()).body(ApiResponse.error(msg));
     }
 
-    // ── Fallback ──────────────────────────────────────────────────────────────
+    // ── Fallback
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {

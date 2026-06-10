@@ -15,11 +15,6 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     @Query("SELECT v FROM Video v WHERE v.driveFileId = :driveFileId")
     java.util.Optional<Video> findByDriveFileId(@Param("driveFileId") String driveFileId);
 
-    /**
-     * Returns all active videos within [from, until] — drives the subscriber listing.
-     * 'from' = max(today - 7 days, subscription.startDate)
-     * 'until' = today
-     */
     @Query("""
             SELECT v FROM Video v
             WHERE v.active = true
@@ -30,10 +25,6 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     List<Video> findVisible(@Param("from") LocalDate from,
                             @Param("until") LocalDate until);
 
-    /**
-     * Returns active videos for a specific date, respecting subscription start.
-     * Used for batch download and single-date queries.
-     */
     @Query("""
             SELECT v FROM Video v
             WHERE v.active = true

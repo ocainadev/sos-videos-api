@@ -135,15 +135,8 @@ public class VideoService {
         return page.stream().map(v -> toResponse(v, false)).toList();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers
 
-    /**
-     * Returns the earliest date the subscriber can see.
-     *
-     * <p>Rule: {@code max(today - VISIBILITY_WINDOW, subscriptionStart - 1)}<br>
-     * The effective start is always one day before the subscription start date,
-     * so every subscriber can see the day prior to their registration.</p>
-     */
     private LocalDate visibleFrom(Subscription sub, LocalDate today) {
         LocalDate windowStart = today.minusDays(AppConstants.VIDEO_VISIBILITY_DAYS - 1);
         LocalDate subscriptionStart = sub.getStartDate() != null ? sub.getStartDate() : today;

@@ -9,13 +9,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Emite tokens de curta duração (5 min) para acesso à pasta do Google Drive.
- *
- * <p>Diferente dos tokens de download de vídeo ({@link DownloadTokenService}),
- * estes são <b>multi-uso</b> dentro do TTL: o usuário pode recarregar a página
- * da pasta sem precisar gerar um novo link. O token expira sozinho após 5 min.</p>
- */
 @Slf4j
 @Service
 public class FolderLinkTokenService {
@@ -26,11 +19,7 @@ public class FolderLinkTokenService {
 
     private final ConcurrentHashMap<String, Entry> tokens = new ConcurrentHashMap<>();
 
-    // ── Geração ─────────────────────────────────────────────────────────────────
-
-    /**
-     * Gera um token de 32 chars (UUID sem hífens) para a pasta informada.
-     */
+    // ── Geração
     public String generateToken(String folderId) {
         String token = UUID.randomUUID().toString().replace("-", "");
         tokens.put(token, new Entry(folderId, Instant.now().plusSeconds(TTL_SECONDS)));
@@ -38,13 +27,7 @@ public class FolderLinkTokenService {
         return token;
     }
 
-    // ── Validação ────────────────────────────────────────────────────────────────
-
-    /**
-     * Valida o token <b>sem consumi-lo</b> (multi-uso dentro do TTL).
-     *
-     * @return o {@code folderId} do Drive, ou vazio se expirado/desconhecido
-     */
+    // ── Validação
     public Optional<String> validateToken(String token) {
         Entry entry = tokens.get(token);
         if (entry == null) {
@@ -59,8 +42,7 @@ public class FolderLinkTokenService {
         return Optional.of(entry.folderId());
     }
 
-    // ── Limpeza ──────────────────────────────────────────────────────────────────
-
+    // ── Limpeza
     @Scheduled(fixedDelay = 60_000)
     public void purgeExpiredTokens() {
         Instant now = Instant.now();

@@ -28,7 +28,6 @@ public class KiwifyWebhookController {
     private final KiwifyWebhookService kiwifyWebhookService;
     private final AppProperties appProperties;
 
-    /** Maximum accepted payload size: 64 KB. Protects against memory exhaustion attacks. */
     private static final int MAX_PAYLOAD_BYTES = 64 * 1024;
 
     @PostMapping("/kiwify")
@@ -55,15 +54,6 @@ public class KiwifyWebhookController {
         return ResponseEntity.ok(ApiResponse.ok("Evento recebido."));
     }
 
-    /**
-     * Valida o token do webhook da Kiwify.
-     *
-     * A Kiwify envia o segredo como query param ?token=... na URL.
-     * O HTTPS garante que a query string é encriptada em trânsito.
-     * A comparação usa MessageDigest.isEqual (constant-time) para evitar timing attacks.
-     *
-     * SECURITY: secret ausente → rejeita sempre (fail-closed).
-     */
     private boolean isSignatureValid(String payload, HttpServletRequest request) {
         String secret = appProperties.getKiwify().getWebhookSecret();
         if (secret == null || secret.isBlank()) {
@@ -77,7 +67,6 @@ public class KiwifyWebhookController {
             return false;
         }
 
-        // Comparação em tempo constante — evita timing attack
         return MessageDigest.isEqual(
                 secret.getBytes(StandardCharsets.UTF_8),
                 receivedToken.getBytes(StandardCharsets.UTF_8)

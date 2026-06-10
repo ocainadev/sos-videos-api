@@ -5,10 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * Represents the Kiwify webhook payload.
- * Field names follow Kiwify's API convention (mixed case).
- */
 @Getter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -35,8 +31,6 @@ public class KiwifyWebhookPayload {
     @JsonProperty("Customer")
     private CustomerData customer;
 
-    // ── Nested: Subscription ──────────────────────────────────────────────────
-
     @Getter
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -59,8 +53,6 @@ public class KiwifyWebhookPayload {
             private String periodEndDate;
         }
     }
-
-    // ── Nested: Customer ──────────────────────────────────────────────────────
 
     @Getter
     @NoArgsConstructor

@@ -64,7 +64,6 @@ public class AdminService {
             throw new BusinessException("Já existe um usuário com este CPF.");
         }
 
-        // Senha inicial = primeiros 6 dígitos do CPF; sem CPF usa "123456"
         String cpfDigits = (request.getCpf() != null) ? request.getCpf().replaceAll("\\D", "") : "";
         String initialPassword = cpfDigits.length() >= 6 ? cpfDigits.substring(0, 6) : "123456";
 
@@ -84,7 +83,6 @@ public class AdminService {
 
         user = userRepository.save(user);
 
-        // Only create a default PENDING subscription for subscribers (not support users)
         if (role == UserRole.SUBSCRIBER) {
             Subscription subscription = Subscription.builder()
                     .user(user)
@@ -98,19 +96,12 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<SubscriberSummaryResponse> listSubscribers(String search,
-                                                                    boolean includeInactive,
-                                                                    String sortBy,
-                                                                    String sortDir,
-                                                                    int page,
-                                                                    int size) {
+    public PageResponse<SubscriberSummaryResponse> listSubscribers(String search, boolean includeInactive, String sortBy, String sortDir, int page, int size) {
         String q = (search == null || search.isBlank()) ? null : search;
         int safeSize = Math.min(size, 100);
 
         Page<User> userPage;
         if ("endDate".equalsIgnoreCase(sortBy)) {
-            // Sort by subscription endDate via LEFT JOIN query (NULLS LAST).
-            // Two separate queries because JPQL does not support dynamic ORDER BY direction.
             Pageable pageable = PageRequest.of(page, safeSize);
             if ("desc".equalsIgnoreCase(sortDir)) {
                 userPage = userRepository.findSubscribersSortedByEndDateDesc(UserRole.SUBSCRIBER, q, includeInactive, pageable);
@@ -118,7 +109,6 @@ public class AdminService {
                 userPage = userRepository.findSubscribersSortedByEndDateAsc(UserRole.SUBSCRIBER, q, includeInactive, pageable);
             }
         } else {
-            // Sort by user fields (name, email, role, createdAt)
             String field = switch (sortBy == null ? "" : sortBy.toLowerCase()) {
                 case "name"  -> "name";
                 case "email" -> "email";
@@ -129,7 +119,6 @@ public class AdminService {
             userPage = userRepository.findSubscribers(UserRole.SUBSCRIBER, q, includeInactive, pageable);
         }
 
-        // Batch-load subscriptions and term acceptances for the current page — avoids N+1 queries
         Set<Long> userIds = userPage.stream().map(User::getId).collect(Collectors.toSet());
         Map<Long, Subscription> subByUserId = subscriptionRepository.findLatestByUserIds(userIds)
                 .stream().collect(Collectors.toMap(s -> s.getUser().getId(), s -> s, (a, b) -> a));
@@ -157,7 +146,7 @@ public class AdminService {
         log.info("User id={} active set to {} by admin", userId, request.getActive());
     }
 
-    // ── Subscriptions ─────────────────────────────────────────────────────────
+    // ── Subscriptions
 
     @Transactional
     public void adjustSubscription(Long subscriptionId, SubscriptionAdjustRequest request) {
@@ -173,10 +162,8 @@ public class AdminService {
             sub.setEndDate(request.getEndDate());
         }
 
-        // Regra de negócio: ACTIVE só é permitido quando a data de início efetiva
-        // (a que ficará gravada) for hoje ou anterior — sem ativação antecipada.
         if (request.getStatus() == SubscriptionStatus.ACTIVE) {
-            LocalDate effectiveStart = sub.getStartDate(); // já atualizado acima se veio no request
+            LocalDate effectiveStart = sub.getStartDate();
             if (effectiveStart != null && effectiveStart.isAfter(AppConstants.today())) {
                 throw new BusinessException(
                         "Não é possível ativar uma assinatura com data de início no futuro (" + effectiveStart + ").");
@@ -185,7 +172,6 @@ public class AdminService {
 
         sub.setStatus(request.getStatus());
         subscriptionRepository.save(sub);
-        // Sanitiza o reason para evitar log injection (remove quebras de linha)
         String safeReason = request.getReason() == null ? "—"
                 : request.getReason().replaceAll("[\r\n\t]", " ").strip();
         log.info("Subscription id={} manually adjusted: {} -> {} | endDate={} | reason={}",
@@ -193,7 +179,7 @@ public class AdminService {
                 sub.getEndDate(), safeReason);
     }
 
-    // ── CSV Import ────────────────────────────────────────────────────────────
+    // ── CSV Import
 
     @Transactional
     public CsvImportResult importFromCsv(MultipartFile file) {
@@ -223,12 +209,10 @@ public class AdminService {
                     String periodEnd = record.get("Current Period End");
 
                     String cpf = cpfRaw != null ? cpfRaw.replaceAll("[^0-9]", "") : "";
-                    // CPF do Kiwify pode ser CNPJ (14 dígitos); guarda só se for CPF válido (11 dígitos)
                     String cpfToSave = cpf.length() == 11 ? cpf : null;
 
                     SubscriptionStatus status = mapCsvStatus(statusRaw);
                     LocalDate startDate = parseCsvDate(startedAt);
-                    // Prefere Current Period End; cai para Ended At se vazio
                     LocalDate endDate = parseCsvDate(!periodEnd.isBlank() ? periodEnd : endedAt);
 
                     Optional<User> existing = userRepository.findByEmail(email);
@@ -310,9 +294,7 @@ public class AdminService {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    /** Single-user lookup — used when fetching or creating an individual subscriber. */
+    // ── Helpers
     private SubscriberSummaryResponse toSummary(User user) {
         Optional<Subscription> sub = subscriptionRepository
                 .findTopByUserIdOrderByCreatedAtDesc(user.getId());
@@ -321,7 +303,6 @@ public class AdminService {
         return toSummary(user, sub.orElse(null), hasAcceptedTerm);
     }
 
-    /** Batch-aware overload — accepts pre-fetched data to avoid N+1. */
     private SubscriberSummaryResponse toSummary(User user, Subscription sub, boolean hasAcceptedTerm) {
         return new SubscriberSummaryResponse(
                 user.getId(),

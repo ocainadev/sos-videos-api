@@ -22,10 +22,6 @@ public interface TermAcceptanceRepository extends JpaRepository<TermAcceptance, 
             """)
     Optional<TermAcceptance> findActiveTermAcceptanceByUserId(@Param("userId") Long userId);
 
-    /**
-     * Returns user IDs (from the given set) that have accepted at least one active term.
-     * Used for batch loading on admin subscriber list — avoids N+1 queries.
-     */
     @Query("""
             SELECT DISTINCT ta.user.id FROM TermAcceptance ta
             WHERE ta.user.id IN :userIds

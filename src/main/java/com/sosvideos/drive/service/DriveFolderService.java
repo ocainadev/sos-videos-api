@@ -176,12 +176,6 @@ public class DriveFolderService {
         return result.toString();
     }
 
-    /**
-     * Deletes all folders whose publishDate is strictly older than
-     * (today - FOLDER_EXPIRY_DAYS), together with their videos and download records.
-     *
-     * @return number of folders removed
-     */
     @Transactional
     public int deleteExpired() {
         // cutoff = today - 7 (e.g. today=27 → 20). Query: publishDate < 20 → day 19 and before deleted.
@@ -221,7 +215,7 @@ public class DriveFolderService {
         log.info("DriveFolder id={} deleted along with {} videos (hard delete)", folderId, videos.size());
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers
 
     private boolean isTxtFile(File driveFile) {
         String mime = driveFile.getMimeType();
@@ -238,7 +232,6 @@ public class DriveFolderService {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-            // Google Drive auto-converte .txt para Google Doc — nesse caso usa export
             if (GOOGLE_DOC_MIME.equalsIgnoreCase(mime)) {
                 log.info("File was auto-converted to Google Doc — exporting as plain text");
                 googleDriveService.exportAsPlainText(driveFile.getId(), baos);

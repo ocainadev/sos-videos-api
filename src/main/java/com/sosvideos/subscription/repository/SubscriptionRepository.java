@@ -46,10 +46,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findByStatusAndEndDateBefore(SubscriptionStatus status, LocalDate date);
 
-    /**
-     * Returns the most recent subscription for each user in the given set.
-     * Used for batch loading on admin subscriber list — avoids N+1 queries.
-     */
     @Query("""
             SELECT s FROM Subscription s
             WHERE s.user.id IN :userIds
