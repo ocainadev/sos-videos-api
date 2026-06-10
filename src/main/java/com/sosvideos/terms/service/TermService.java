@@ -28,7 +28,7 @@ public class TermService {
     private final TermAcceptanceRepository termAcceptanceRepository;
     private final UserRepository userRepository;
 
-    // ── Subscriber ────────────────────────────────────────────────────────────
+    // ── Subscriber
 
     @Transactional(readOnly = true)
     public TermResponse getActiveTerm() {
@@ -69,7 +69,7 @@ public class TermService {
         log.info("Term accepted: userId={} termId={} version={}", userId, term.getId(), term.getVersion());
     }
 
-    // ── Admin ─────────────────────────────────────────────────────────────────
+    // ── Admin
 
     @Transactional
     public TermResponse create(TermRequest request) {
@@ -118,7 +118,7 @@ public class TermService {
                 .toList();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers
 
     private TermResponse toResponse(Term t) {
         return new TermResponse(

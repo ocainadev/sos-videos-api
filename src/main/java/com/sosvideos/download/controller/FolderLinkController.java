@@ -20,20 +20,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.util.Map;
 
-/**
- * Endpoints para link temporário de pasta do Google Drive.
- *
- * <h2>Fluxo</h2>
- * <ol>
- *   <li>Frontend chama {@code POST /api/videos/date/{date}/folder-link} (JWT obrigatório)</li>
- *   <li>Backend valida acesso, gera token de 5 min e retorna {@code { token, expiresIn }}</li>
- *   <li>Frontend abre {@code GET /api/folder-link/{token}} em nova aba</li>
- *   <li>Backend valida token e redireciona (302) para a pasta do Drive</li>
- * </ol>
- *
- * <p>O token é <b>multi-uso</b> dentro dos 5 minutos — o usuário pode recarregar
- * a página do Drive sem precisar gerar um novo link.</p>
- */
 @Slf4j
 @RestController
 @RequestMapping("/api")
@@ -43,8 +29,6 @@ public class FolderLinkController {
 
     private final FolderLinkTokenService folderLinkTokenService;
     private final DriveFolderRepository driveFolderRepository;
-
-    // ── POST /api/videos/date/{date}/folder-link ─────────────────────────────────
 
     @PostMapping("/videos/date/{date}/folder-link")
     @PreAuthorize("hasAnyRole('SUBSCRIBER', 'ADMIN', 'SUPPORT')")
@@ -71,8 +55,6 @@ public class FolderLinkController {
                 "expiresIn", 300
         )));
     }
-
-    // ── GET /api/folder-link/{token} ─────────────────────────────────────────────
 
     @GetMapping("/folder-link/{token}")
     @Operation(

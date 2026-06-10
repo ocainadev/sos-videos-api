@@ -22,10 +22,6 @@ public class DateNoteService {
     private final SubscriptionService subscriptionService;
     private final TermAcceptanceRepository termAcceptanceRepository;
 
-    /**
-     * Validates subscriber access: active subscription + accepted terms.
-     * Bypassed for ADMIN / SUPPORT roles.
-     */
     public void requireSubscriberAccess(UserPrincipal principal) {
         if (!principal.bypassesSubscriptionCheck()) {
             subscriptionService.requireAccess(principal.getId());

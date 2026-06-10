@@ -29,10 +29,6 @@ public class DownloadService {
     private final UserRepository userRepository;
     private final VideoService videoService;
 
-    /**
-     * Validates access, records the download, and returns the info needed to stream.
-     * Transaction is committed BEFORE streaming begins, so the record is always saved.
-     */
     @Transactional
     public DownloadPrep prepareDownload(Long videoId, UserPrincipal principal, DownloadType type) {
         Video video = videoService.requireAccessToVideo(videoId, principal);
@@ -55,20 +51,11 @@ public class DownloadService {
         );
     }
 
-    /**
-     * Validates that {@code principal} has access to {@code videoId} without recording
-     * a download. Used when issuing a pre-download token.
-     */
     @Transactional(readOnly = true)
     public void validateVideoAccess(Long videoId, UserPrincipal principal) {
         videoService.requireAccessToVideo(videoId, principal);
     }
 
-    /**
-     * Same as {@link #prepareDownload} but looks up the user by ID instead of requiring
-     * an already-authenticated principal. Used by the public token-based download endpoint,
-     * where the JWT is not available (the token itself authenticates the request).
-     */
     @Transactional
     public DownloadPrep prepareDownloadById(Long videoId, Long userId, DownloadType type) {
         User user = userRepository.findById(userId)
@@ -77,10 +64,6 @@ public class DownloadService {
         return prepareDownload(videoId, principal, type);
     }
 
-    /**
-     * Returns the ordered list of videos for a date so the frontend can
-     * chain individual download calls sequentially.
-     */
     @Transactional(readOnly = true)
     public BatchDownloadListResponse getBatchList(LocalDate date, UserPrincipal principal) {
         List<Video> videos = videoService.requireAccessToVideosOnDate(date, principal);

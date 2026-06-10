@@ -20,16 +20,10 @@ public class CreateSubscriberRequest {
     @Size(max = 254, message = "E-mail muito longo")
     private String email;
 
-    /** CPF — somente dígitos ou formato 000.000.000-00 */
     @Pattern(regexp = "^(\\d{11}|\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2})?$",
              message = "CPF inválido — informe 11 dígitos ou no formato 000.000.000-00")
     private String cpf;
 
-    /**
-     * Papel do usuário. Opcional — padrão SUBSCRIBER.
-     * Valores aceitos: SUBSCRIBER, SUPPORT.
-     * Qualquer outro valor é silenciosamente tratado como SUBSCRIBER no service.
-     */
     @Pattern(regexp = "^(SUBSCRIBER|SUPPORT)?$",
              message = "Role inválida — valores aceitos: SUBSCRIBER, SUPPORT")
     private String role;

@@ -29,13 +29,6 @@ public class GoogleDriveConfig {
 
     private final AppProperties appProperties;
 
-    /**
-     * Exposes the GoogleCredentials as a bean so GoogleDriveService can generate
-     * short-lived authenticated download URLs (for browser redirect downloads).
-     *
-     * @Lazy: only initialised on first use — avoids startup failure if credentials
-     * file is not yet present.
-     */
     @Bean
     @Lazy
     public GoogleCredentials googleCredentials() throws Exception {
@@ -48,14 +41,6 @@ public class GoogleDriveConfig {
         }
     }
 
-    /**
-     * @Lazy: Drive bean only initialized on first use.
-     * This avoids startup failures when credentials are not yet configured.
-     *
-     * Read timeout increased to 5 min: the proxy-streaming path needs it for large
-     * files. The redirect path (preferred) doesn't use this at all during the actual
-     * download — but the bean is still used for listing/metadata calls.
-     */
     @Bean
     @Lazy
     public Drive googleDrive(GoogleCredentials googleCredentials) throws Exception {

@@ -11,20 +11,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Issues single-use, short-lived download tokens.
- *
- * <p>The client (frontend) first requests a token via an authenticated endpoint,
- * then redirects the browser to the public download URL — no JWT or blob required.
- * The browser receives the file natively, which is the only reliable approach on
- * mobile (avoids loading the entire file into JS/browser memory).</p>
- *
- * <ul>
- *   <li>Tokens expire after {@value TTL_SECONDS} seconds.</li>
- *   <li>Each token is consumed on first use (single-use).</li>
- *   <li>Expired tokens are purged every minute by a scheduler.</li>
- * </ul>
- */
 @Slf4j
 @Service
 public class DownloadTokenService {
@@ -34,13 +20,7 @@ public class DownloadTokenService {
     /** In-memory store — no persistence needed given the short TTL. */
     private final ConcurrentHashMap<String, DownloadTokenEntry> tokens = new ConcurrentHashMap<>();
 
-    // ── Generation ──────────────────────────────────────────────────────────────
-
-    /**
-     * Generates a new one-time download token for the given video and user.
-     *
-     * @return a 32-character hex token (UUID without hyphens)
-     */
+    // ── Generation
     public String generateToken(Long videoId, Long userId, DownloadType type) {
         String token = UUID.randomUUID().toString().replace("-", "");
         tokens.put(token, new DownloadTokenEntry(videoId, userId, type, Instant.now().plusSeconds(TTL_SECONDS)));
@@ -48,13 +28,7 @@ public class DownloadTokenService {
         return token;
     }
 
-    // ── Consumption ─────────────────────────────────────────────────────────────
-
-    /**
-     * Validates and atomically removes the token (single-use).
-     *
-     * @return the entry, or empty if the token is unknown or already expired
-     */
+    // ── Consumption
     public Optional<DownloadTokenEntry> validateAndConsume(String token) {
         DownloadTokenEntry entry = tokens.remove(token);
         if (entry == null) {
@@ -69,9 +43,7 @@ public class DownloadTokenService {
         return Optional.of(entry);
     }
 
-    // ── Cleanup ─────────────────────────────────────────────────────────────────
-
-    /** Removes expired tokens from memory every 60 seconds. */
+    // ── Cleanup
     @Scheduled(fixedDelay = 60_000)
     public void purgeExpiredTokens() {
         Instant now = Instant.now();

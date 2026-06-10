@@ -21,7 +21,6 @@ public class UserPrincipal implements UserDetails {
         return user.getId();
     }
 
-    /** SUPPORT and ADMIN bypass subscription/term checks on subscriber endpoints. */
     public boolean bypassesSubscriptionCheck() {
         UserRole role = user.getRole();
         return role == UserRole.SUPPORT || role == UserRole.ADMIN;

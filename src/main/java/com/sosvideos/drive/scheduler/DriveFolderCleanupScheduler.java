@@ -13,7 +13,6 @@ public class DriveFolderCleanupScheduler {
 
     private final DriveFolderService driveFolderService;
 
-    /** Runs every day at 03:00 — purges folders outside the 7-day visibility window. */
     @Scheduled(cron = "0 0 3 * * *")
     public void expireOldFolders() {
         log.info("DriveFolderCleanupScheduler: starting scheduled expiry run");
