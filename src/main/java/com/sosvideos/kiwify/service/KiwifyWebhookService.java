@@ -41,10 +41,6 @@ public class KiwifyWebhookService {
         KiwifyWebhookPayload payload = parse(rawPayload);
         String externalId = buildExternalId(payload);
 
-        if (webhookEventRepository.existsByProviderAndExternalId(AppConstants.KIWIFY_PROVIDER, externalId)) {
-            log.info("Duplicate Kiwify event ignored: {}", externalId);
-            return;
-        }
 
         WebhookEvent event = WebhookEvent.builder()
                 .provider(AppConstants.KIWIFY_PROVIDER)
