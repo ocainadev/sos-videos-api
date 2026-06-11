@@ -110,6 +110,13 @@ public class KiwifyWebhookService {
             log.info("Pending subscription activated via webhook: userId={} kiwifySubId={}", user.getId(), kiwifySubId);
             return;
         }
+        Optional<Subscription> latest =
+                subscriptionRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId());
+
+        if (latest.isPresent()) {
+            activateOrExtend(latest.get());
+            return;
+        }
 
         createSubscription(user, customerData, kiwifySubId);
     }
@@ -241,10 +248,7 @@ public class KiwifyWebhookService {
         if (payload.getSubscription() != null && payload.getSubscription().getId() != null) {
             return payload.getSubscription().getId();
         }
-        if (payload.getOrderId() != null) {
-            return payload.getOrderId();
-        }
-        throw new BusinessException("Webhook payload sem ID de assinatura ou pedido.");
+        throw new BusinessException("Webhook payload sem subscription_id.");
     }
 
     private String buildExternalId(KiwifyWebhookPayload payload) {
