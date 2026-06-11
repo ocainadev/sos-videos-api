@@ -41,7 +41,6 @@ public class KiwifyWebhookService {
         KiwifyWebhookPayload payload = parse(rawPayload);
         String externalId = buildExternalId(payload);
 
-
         WebhookEvent event = WebhookEvent.builder()
                 .provider(AppConstants.KIWIFY_PROVIDER)
                 .eventType(payload.getWebhookEventType())
